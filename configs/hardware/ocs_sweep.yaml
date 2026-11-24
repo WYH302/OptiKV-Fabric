@@ -1,0 +1,12 @@
+# Sensitivity grid. The main comparison is NOT this grid.
+# 400 Gbit/s * 0.90 / 8 = 45 GB/s. Decimal GB/s uses 1e9 B/s.
+bandwidth_gb_s: [50, 100, 200, 400, 800]
+latency_us: [1, 5, 10, 50]
+reconfig_us: [0, 1, 10, 100, 1000, 25000, 50000]
+concurrent_links: [1, 2, 4, 8]
+main_comparison:
+  bandwidth_gb_s: 45.0
+  latency_us: 5
+  reconfig_us: 25000
+  concurrent_links: 1
+  note: "400G at 90 percent effective rate. Do not use 800 GB/s as the main comparison."

@@ -1,0 +1,9 @@
+model,dtype,target_tokens,actual_tokens,ttft_s
+Qwen2.5-7B-Instruct,bfloat16,1024,1024,0.195521355
+Qwen2.5-7B-Instruct,bfloat16,2048,2048,0.392906189
+Qwen2.5-7B-Instruct,bfloat16,4096,4096,0.786988497
+Qwen2.5-7B-Instruct,bfloat16,8192,8192,1.665224791
+Qwen2.5-7B-Instruct,bfloat16,12288,12288,2.829655647
+Qwen2.5-7B-Instruct,bfloat16,16384,16384,3.952908039
+Qwen2.5-7B-Instruct,bfloat16,24576,24576,6.458255529
+Qwen2.5-7B-Instruct,bfloat16,32768,32768,9.507633209

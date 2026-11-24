@@ -1,0 +1,11 @@
+# Core simulation, data processing, calibration analysis, and plotting dependencies
+# Tested on Python 3.12.10 with:
+#   numpy==2.4.4, pandas==3.0.2, pyarrow==24.0.0, matplotlib==3.10.8,
+#   scipy==1.17.1, PyYAML==6.0.3, pytest==9.2.0
+numpy>=1.26.0
+pandas>=2.1.0
+pyarrow>=15.0.0
+matplotlib>=3.8.0
+scipy>=1.11.0
+PyYAML>=6.0.0
+pytest>=8.0.0

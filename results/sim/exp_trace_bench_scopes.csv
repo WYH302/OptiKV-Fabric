@@ -1,0 +1,5 @@
+trace,requests,sessions,p50_tokens,p95_tokens,max_tokens
+Mooncake (full),23608,,6345,26078,125546
+"LMCache (all 767 sess, tokenized)",24880,767,24086,46467,103637
+LMCache (120-sess benchmark),5046,120,24819,44899,86350
+FreeInference (25 long sess),899,25,82016,142823,181168

@@ -1,0 +1,3 @@
+item,power_w,cost_usd_low,cost_usd_high,source,measured_here
+ocs_port,0.39,520,520,arXiv:2610.18444,False
+electrical_400g_port,39.4,583,1090,arXiv:2610.18444,False

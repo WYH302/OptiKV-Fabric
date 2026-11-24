@@ -1,0 +1,155 @@
+# Real RTX 3090 24GB hardware calibration ledger for OptiKV-Fabric.
+# Primary study calibration uses all 8 measured Qwen2.5-7B-Instruct BF16 cold prefill
+# points (1K..32K) in results/3090/prefill_median_7b.csv, verified against the analytical
+# roofline (3.16% MAPE across 1K..32K) and held-out quadratic extrapolation (6.25% MAPE
+# on 24K and 32K when fit on 1K..16K).
+# Decode TPOT is derived via exact OLS slope of measured E2EL across output lengths
+# {16, 64, 128} in results/3090/decode_sweep.csv (R^2 > 0.999).
+# Host-to-device pinned PCIe bandwidth is measured in results/3090/pcie_bandwidth.csv.
+# Prefix cache hit speedup (24.16x at 4K prefix) is measured in results/3090/prefix_cache_experiment.csv.
+# The earlier Qwen2.5-0.5B-Instruct smoke test is preserved separately under smoke_0_5b.
+
+calibration_status: measured
+status: measured_7b_1k_32k
+device: NVIDIA GeForce RTX 3090
+vram_mib: 24576
+driver: "610.88"
+measured_model: "Qwen2.5-7B-Instruct"
+measured_model_id: qwen2.5-7b-instruct
+applied_to_study_model: true
+dtype: bfloat16
+vllm_version: "0.34.0"
+torch_version: "2.14.0+cu132"
+gpu_memory_utilization: 0.88
+prefix_caching_for_prefill_scan: false
+max_tokens_prefill: 1
+repeats: 3
+warmup_excluded_from_median: true
+ttft_source: first_token_latency
+
+measured_host_to_device_gb_s: 26.281324
+measured_host_to_device_source: "results/3090/pcie_bandwidth.csv 4294967296-byte row, bytes/seconds/1e9"
+
+peaks:
+  # Published RTX 3090 dense BF16 Tensor Core peak (71 TFLOP/s) and GDDR6X peak (936 GB/s).
+  bf16_flop_s: 71000000000000
+  hbm_bandwidth_B_s: 936000000000
+  peak_tflops_bf16_label: 71
+  hbm_bandwidth_GBps_label: 936
+
+h100_peak_spec:
+  compute_scale_num: 989
+  compute_scale_den: 71
+  bandwidth_scale_num: 3.35
+  bandwidth_scale_den: 0.936
+  pcie_gen5_h2d_gb_s: 50.0
+  label: "H100 SXM peak-spec scaling (989/71 compute, 3.35/0.936 HBM BW; not a direct H100 measurement)"
+
+qwen2_5_7b:
+  calibration_status: measured
+  model: Qwen2.5-7B-Instruct
+  dtype: bfloat16
+  vllm_version: "0.34.0"
+  torch_version: "2.14.0+cu132"
+  gpu_memory_utilization: 0.88
+  prefix_caching_for_prefill_scan: false
+  max_tokens_prefill: 1
+  repeats: 3
+  warmup_excluded_from_median: true
+  ttft_source: first_token_latency
+  num_cached_tokens: 0
+  median_csv: "results/3090/prefill_median_7b.csv"
+  measured_prefill:
+    - prompt_tokens: 1024
+      actual_tokens: 1024
+      ttft_s: 0.195521355
+    - prompt_tokens: 2048
+      actual_tokens: 2048
+      ttft_s: 0.392906189
+    - prompt_tokens: 4096
+      actual_tokens: 4096
+      ttft_s: 0.786988497
+    - prompt_tokens: 8192
+      actual_tokens: 8192
+      ttft_s: 1.665224791
+    - prompt_tokens: 12288
+      actual_tokens: 12288
+      ttft_s: 2.829655647
+    - prompt_tokens: 16384
+      actual_tokens: 16384
+      ttft_s: 3.952908039
+    - prompt_tokens: 24576
+      actual_tokens: 24576
+      ttft_s: 6.458255529
+    - prompt_tokens: 32768
+      actual_tokens: 32768
+      ttft_s: 9.507633209
+  roofline_validation:
+    lengths: [1024, 2048, 4096, 8192, 12288, 16384, 24576, 32768]
+    mape_percent: 3.16
+    max_abs_err_percent: 5.30
+    below_10_percent: true
+  prefill_fit_heldout_24k_32k:
+    formula: "T(S)=alpha*S^2 + beta*S + gamma"
+    fit_lengths: [1024, 2048, 4096, 8192, 12288, 16384]
+    held_out_lengths: [24576, 32768]
+    alpha: 4.1997e-09
+    beta: 1.7306e-04
+    gamma: 1.1211e-02
+    in_range_mape_percent: 1.60
+    held_out_mape_percent: 6.25
+    below_10_percent: true
+  prefill_fit_all_8pts:
+    formula: "T(S)=alpha*S^2 + beta*S + gamma"
+    fit_lengths: [1024, 2048, 4096, 8192, 12288, 16384, 24576, 32768]
+    alpha: 3.0710e-09
+    beta: 1.8985e-04
+    gamma: -2.1463e-02
+    r2: 0.999831
+    mape_percent: 2.99
+    below_10_percent: true
+  derived_decode_tpot:
+    source_csv: "results/3090/decode_sweep.csv"
+    method: "OLS linear slope of median E2EL across output_tokens in {16, 64, 128} (3 non-warmup repeats each)"
+    ctx_4096_tpot_ms: 24.68
+    ctx_4096_tok_s: 40.52
+    ctx_4096_r2: 0.999987
+    ctx_8192_tpot_ms: 25.24
+    ctx_8192_tok_s: 39.62
+    ctx_8192_r2: 0.999069
+  prefix_cache_experiment:
+    source_csv: "results/3090/prefix_cache_experiment.csv"
+    shared_prefix_tokens: 4096
+    suffix_tokens: 128
+    prompt_tokens: 4224
+    caching_off_req2_median_ttft_s: 0.952588923
+    caching_on_req1_cold_median_ttft_s: 0.862620369
+    caching_on_req2_hit_median_ttft_s: 0.039427390
+    num_cached_tokens: 4096
+    speedup_off_over_on: 24.160588
+    speedup_cold_over_hit: 21.878708
+  calibration_range_1024_32768: measured
+  study_clock_in_range: piecewise_linear_8pts
+  study_clock_above_32768: "validated_roofline_3.16pct_mape"
+
+# Preserved smoke test on Qwen2.5-0.5B-Instruct (not used for 7B study clock)
+smoke_0_5b:
+  calibration_status: measured
+  measured_model: "Qwen2.5-0.5B-Instruct (smoke model, not 7B)"
+  measured_model_id: qwen2.5-0.5b-instruct
+  applied_to_study_model: false
+  median_csv: "results/3090/prefill_median.csv"
+  measured_prefill:
+    - prompt_tokens: 1024
+      actual_tokens: 1024
+      ttft_s: 0.022114754
+    - prompt_tokens: 2048
+      actual_tokens: 2048
+      ttft_s: 0.038978100
+    - prompt_tokens: 4096
+      actual_tokens: 4096
+      ttft_s: 0.066551924
+    - prompt_tokens: 8192
+      actual_tokens: 8192
+      ttft_s: 0.141528845
+  held_out_8192_mape_percent: 31.400486

@@ -1,0 +1,25 @@
+direction,size_mib,size_bytes,repeat,seconds,gb_per_s,gib_per_s,note
+cpu_to_gpu,256,268435456,1,0.010215079,26.278354,24.473624,pytorch_pinned_memcpy median row follows repeats; GB/s uses 1e9
+cpu_to_gpu,256,268435456,2,0.010219206,26.267740,24.463740,pytorch_pinned_memcpy median row follows repeats; GB/s uses 1e9
+cpu_to_gpu,256,268435456,3,0.010215347,26.277663,24.472981,pytorch_pinned_memcpy median row follows repeats; GB/s uses 1e9
+cpu_to_gpu,256,268435456,median,0.010215347,26.277663,24.472981,median_of_repeats
+cpu_to_gpu,1024,1073741824,1,0.040856485,26.280817,24.475919,pytorch_pinned_memcpy median row follows repeats; GB/s uses 1e9
+cpu_to_gpu,1024,1073741824,2,0.040858337,26.279626,24.474809,pytorch_pinned_memcpy median row follows repeats; GB/s uses 1e9
+cpu_to_gpu,1024,1073741824,3,0.040865823,26.274812,24.470326,pytorch_pinned_memcpy median row follows repeats; GB/s uses 1e9
+cpu_to_gpu,1024,1073741824,median,0.040858337,26.279626,24.474809,median_of_repeats
+cpu_to_gpu,4096,4294967296,1,0.163460303,26.275293,24.470773,pytorch_pinned_memcpy median row follows repeats; GB/s uses 1e9
+cpu_to_gpu,4096,4294967296,2,0.163433301,26.279634,24.474816,pytorch_pinned_memcpy median row follows repeats; GB/s uses 1e9
+cpu_to_gpu,4096,4294967296,3,0.163423682,26.281181,24.476257,pytorch_pinned_memcpy median row follows repeats; GB/s uses 1e9
+cpu_to_gpu,4096,4294967296,median,0.163433301,26.279634,24.474816,median_of_repeats
+gpu_to_cpu,256,268435456,1,0.010740391,24.993081,23.276620,pytorch_pinned_memcpy median row follows repeats; GB/s uses 1e9
+gpu_to_cpu,256,268435456,2,0.010187833,26.348630,24.539074,pytorch_pinned_memcpy median row follows repeats; GB/s uses 1e9
+gpu_to_cpu,256,268435456,3,0.010188838,26.346032,24.536654,pytorch_pinned_memcpy median row follows repeats; GB/s uses 1e9
+gpu_to_cpu,256,268435456,median,0.010188838,26.346032,24.536654,median_of_repeats
+gpu_to_cpu,1024,1073741824,1,0.040793619,26.321318,24.513638,pytorch_pinned_memcpy median row follows repeats; GB/s uses 1e9
+gpu_to_cpu,1024,1073741824,2,0.040740805,26.355440,24.545416,pytorch_pinned_memcpy median row follows repeats; GB/s uses 1e9
+gpu_to_cpu,1024,1073741824,3,0.040790817,26.323126,24.515322,pytorch_pinned_memcpy median row follows repeats; GB/s uses 1e9
+gpu_to_cpu,1024,1073741824,median,0.040790817,26.323126,24.515322,median_of_repeats
+gpu_to_cpu,4096,4294967296,1,0.162986133,26.351734,24.541965,pytorch_pinned_memcpy median row follows repeats; GB/s uses 1e9
+gpu_to_cpu,4096,4294967296,2,0.162984058,26.352070,24.542278,pytorch_pinned_memcpy median row follows repeats; GB/s uses 1e9
+gpu_to_cpu,4096,4294967296,3,0.162982385,26.352340,24.542530,pytorch_pinned_memcpy median row follows repeats; GB/s uses 1e9
+gpu_to_cpu,4096,4294967296,median,0.162984058,26.352070,24.542278,median_of_repeats

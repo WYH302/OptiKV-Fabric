@@ -1,0 +1,891 @@
+{
+  "generated_at_utc": "2026-11-20T17:26:34+00:00",
+  "definitions": {
+    "prefix_reuse": "Prefix reuse is the fraction of block-id occurrences whose id appears in any strictly earlier request. Requests are ordered by (timestamp is null, timestamp, original row index), all ascending. Ids are marked seen only after the whole request is processed, so a repeated id inside one request is not reuse unless that id occurred in an earlier request. This is not the provider cache_read_tokens ratio.",
+    "percentile_method": "numpy.percentile linear",
+    "freeinference_split": "First (n_rows * 7) // 10 rows after sorting by (timestamp is null, timestamp, original row index).",
+    "lengths": "Input and output percentiles use only numeric columns that exist. Message text is not tokenized."
+  },
+  "traces": [
+    {
+      "trace_id": "conversation",
+      "display_name": "Conversation",
+      "kind": "mooncake",
+      "source_repo": "valeriol29/mooncake-traces",
+      "files": [
+        {
+          "path": "datasets/mooncake-traces/conversation/train-00000-of-00001.parquet",
+          "bytes": 1384324
+        }
+      ],
+      "n_requests": 12031,
+      "n_sessions": null,
+      "n_null_session_id": null,
+      "columns": [
+        {
+          "name": "timestamp",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "input_length",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "output_length",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "hash_ids",
+          "type": "list<element: int64>",
+          "nullable": true
+        }
+      ],
+      "schemas_identical": true,
+      "timestamp_column": "timestamp",
+      "input_length": {
+        "column": "input_length",
+        "n_nonnull": 12031,
+        "n_null_or_nonfinite": 0,
+        "percentile_method": "numpy.percentile linear",
+        "mean": 12035.061341534369,
+        "min": 891.0,
+        "p50": 6909.0,
+        "p90": 27367.0,
+        "p95": 39550.5,
+        "p99": 85400.4,
+        "max": 126195.0
+      },
+      "output_length": {
+        "column": "output_length",
+        "n_nonnull": 12031,
+        "n_null_or_nonfinite": 0,
+        "percentile_method": "numpy.percentile linear",
+        "mean": 342.6189011719724,
+        "min": 1.0,
+        "p50": 350.0,
+        "p90": 597.0,
+        "p95": 698.0,
+        "p99": 1118.5000000000036,
+        "max": 2000.0
+      },
+      "prefix_reuse": {
+        "n_block_occurrences": 288500,
+        "n_reused_occurrences": 105710,
+        "n_unique_block_ids": 182790,
+        "reuse_fraction": 0.3664124783362218,
+        "method": "shifted_uint8_index",
+        "block_id_min": 0,
+        "block_id_max": 182789,
+        "mean_block_ids_per_request": 23.97971905909733,
+        "definition": "Prefix reuse is the fraction of block-id occurrences whose id appears in any strictly earlier request. Requests are ordered by (timestamp is null, timestamp, original row index), all ascending. Ids are marked seen only after the whole request is processed, so a repeated id inside one request is not reuse unless that id occurred in an earlier request. This is not the provider cache_read_tokens ratio.",
+        "timestamp_column": "timestamp",
+        "block_id_column": "hash_ids",
+        "documented_block_tokens": 512,
+        "documented_block_tokens_source": "valeriol29/mooncake-traces dataset card states 512-token hash blocks; not re-tokenized here"
+      },
+      "input_tokens_per_block": {
+        "column": "recorded_input_length_per_stored_block_id",
+        "n_nonnull": 12031,
+        "n_null_or_nonfinite": 0,
+        "percentile_method": "numpy.percentile linear",
+        "mean": 483.27349938162575,
+        "min": 341.6666666666667,
+        "p50": 496.3333333333333,
+        "p90": 509.875,
+        "p95": 510.91485507246375,
+        "p99": 511.8135174418605,
+        "max": 512.0,
+        "n_rows": 12031,
+        "meaning": "Recorded input length divided by the number of stored block ids. This is a comparison with the documented block size, not a new tokenization."
+      },
+      "pre_gap": null,
+      "requests_per_session": null,
+      "provider_cache": null,
+      "model_counts": null,
+      "notes": [
+        "No session_id column is present, so the session count is null."
+      ]
+    },
+    {
+      "trace_id": "mooncake",
+      "display_name": "Mooncake",
+      "kind": "mooncake",
+      "source_repo": "valeriol29/mooncake-traces",
+      "files": [
+        {
+          "path": "datasets/mooncake-traces/mooncake/train-00000-of-00001.parquet",
+          "bytes": 1470012
+        }
+      ],
+      "n_requests": 23608,
+      "n_sessions": null,
+      "n_null_session_id": null,
+      "columns": [
+        {
+          "name": "timestamp",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "input_length",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "output_length",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "hash_ids",
+          "type": "list<element: int64>",
+          "nullable": true
+        }
+      ],
+      "schemas_identical": true,
+      "timestamp_column": "timestamp",
+      "input_length": {
+        "column": "input_length",
+        "n_nonnull": 23608,
+        "n_null_or_nonfinite": 0,
+        "percentile_method": "numpy.percentile linear",
+        "mean": 8589.956836665537,
+        "min": 890.0,
+        "p50": 6345.0,
+        "p90": 16789.099999999995,
+        "p95": 26078.549999999985,
+        "p99": 61615.86000000003,
+        "max": 125546.0
+      },
+      "output_length": {
+        "column": "output_length",
+        "n_nonnull": 23608,
+        "n_null_or_nonfinite": 0,
+        "percentile_method": "numpy.percentile linear",
+        "mean": 182.1338952897323,
+        "min": 1.0,
+        "p50": 30.0,
+        "p90": 507.0,
+        "p95": 600.0,
+        "p99": 897.9300000000003,
+        "max": 2000.0
+      },
+      "prefix_reuse": {
+        "n_block_occurrences": 409356,
+        "n_reused_occurrences": 226190,
+        "n_unique_block_ids": 183166,
+        "reuse_fraction": 0.5525508359471951,
+        "method": "shifted_uint8_index",
+        "block_id_min": 0,
+        "block_id_max": 257304,
+        "mean_block_ids_per_request": 17.339715350728568,
+        "definition": "Prefix reuse is the fraction of block-id occurrences whose id appears in any strictly earlier request. Requests are ordered by (timestamp is null, timestamp, original row index), all ascending. Ids are marked seen only after the whole request is processed, so a repeated id inside one request is not reuse unless that id occurred in an earlier request. This is not the provider cache_read_tokens ratio.",
+        "timestamp_column": "timestamp",
+        "block_id_column": "hash_ids",
+        "documented_block_tokens": 512,
+        "documented_block_tokens_source": "valeriol29/mooncake-traces dataset card states 512-token hash blocks; not re-tokenized here"
+      },
+      "input_tokens_per_block": {
+        "column": "recorded_input_length_per_stored_block_id",
+        "n_nonnull": 23608,
+        "n_null_or_nonfinite": 0,
+        "percentile_method": "numpy.percentile linear",
+        "mean": 482.21139198829593,
+        "min": 341.6666666666667,
+        "p50": 487.85714285714283,
+        "p90": 508.53653846153844,
+        "p95": 510.27777777777777,
+        "p99": 511.64285714285717,
+        "max": 512.0,
+        "n_rows": 23608,
+        "meaning": "Recorded input length divided by the number of stored block ids. This is a comparison with the documented block size, not a new tokenization."
+      },
+      "pre_gap": null,
+      "requests_per_session": null,
+      "provider_cache": null,
+      "model_counts": null,
+      "notes": [
+        "No session_id column is present, so the session count is null."
+      ]
+    },
+    {
+      "trace_id": "synthetic",
+      "display_name": "Synthetic",
+      "kind": "mooncake",
+      "source_repo": "valeriol29/mooncake-traces",
+      "files": [
+        {
+          "path": "datasets/mooncake-traces/synthetic/train-00000-of-00001.parquet",
+          "bytes": 464591
+        }
+      ],
+      "n_requests": 3993,
+      "n_sessions": null,
+      "n_null_session_id": null,
+      "columns": [
+        {
+          "name": "timestamp",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "input_length",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "output_length",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "hash_ids",
+          "type": "list<element: int64>",
+          "nullable": true
+        }
+      ],
+      "schemas_identical": true,
+      "timestamp_column": "timestamp",
+      "input_length": {
+        "column": "input_length",
+        "n_nonnull": 3993,
+        "n_null_or_nonfinite": 0,
+        "percentile_method": "numpy.percentile linear",
+        "mean": 15325.476584022039,
+        "min": 13.0,
+        "p50": 11587.0,
+        "p90": 38611.200000000004,
+        "p95": 48904.59999999993,
+        "p99": 66456.16,
+        "max": 191378.0
+      },
+      "output_length": {
+        "column": "output_length",
+        "n_nonnull": 3993,
+        "n_null_or_nonfinite": 0,
+        "percentile_method": "numpy.percentile linear",
+        "mean": 149.11895817680943,
+        "min": 1.0,
+        "p50": 69.0,
+        "p90": 389.0,
+        "p95": 519.0,
+        "p99": 768.0799999999999,
+        "max": 893.0
+      },
+      "prefix_reuse": {
+        "n_block_occurrences": 121877,
+        "n_reused_occurrences": 77953,
+        "n_unique_block_ids": 43924,
+        "reuse_fraction": 0.6396038629109676,
+        "method": "shifted_uint8_index",
+        "block_id_min": 0,
+        "block_id_max": 43923,
+        "mean_block_ids_per_request": 30.52266466316053,
+        "definition": "Prefix reuse is the fraction of block-id occurrences whose id appears in any strictly earlier request. Requests are ordered by (timestamp is null, timestamp, original row index), all ascending. Ids are marked seen only after the whole request is processed, so a repeated id inside one request is not reuse unless that id occurred in an earlier request. This is not the provider cache_read_tokens ratio.",
+        "timestamp_column": "timestamp",
+        "block_id_column": "hash_ids",
+        "documented_block_tokens": 512,
+        "documented_block_tokens_source": "valeriol29/mooncake-traces dataset card states 512-token hash blocks; not re-tokenized here"
+      },
+      "input_tokens_per_block": {
+        "column": "recorded_input_length_per_stored_block_id",
+        "n_nonnull": 3993,
+        "n_null_or_nonfinite": 0,
+        "percentile_method": "numpy.percentile linear",
+        "mean": 381.47853837576065,
+        "min": 13.0,
+        "p50": 499.61290322580646,
+        "p90": 510.4122529644269,
+        "p95": 511.2476923076923,
+        "p99": 511.8317586726999,
+        "max": 512.0,
+        "n_rows": 3993,
+        "meaning": "Recorded input length divided by the number of stored block ids. This is a comparison with the documented block size, not a new tokenization."
+      },
+      "pre_gap": null,
+      "requests_per_session": null,
+      "provider_cache": null,
+      "model_counts": null,
+      "notes": [
+        "No session_id column is present, so the session count is null."
+      ]
+    },
+    {
+      "trace_id": "toolagent",
+      "display_name": "ToolAgent",
+      "kind": "mooncake",
+      "source_repo": "valeriol29/mooncake-traces",
+      "files": [
+        {
+          "path": "datasets/mooncake-traces/toolagent/train-00000-of-00001.parquet",
+          "bytes": 1488704
+        }
+      ],
+      "n_requests": 23608,
+      "n_sessions": null,
+      "n_null_session_id": null,
+      "columns": [
+        {
+          "name": "timestamp",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "input_length",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "output_length",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "hash_ids",
+          "type": "list<element: int64>",
+          "nullable": true
+        }
+      ],
+      "schemas_identical": true,
+      "timestamp_column": "timestamp",
+      "input_length": {
+        "column": "input_length",
+        "n_nonnull": 23608,
+        "n_null_or_nonfinite": 0,
+        "percentile_method": "numpy.percentile linear",
+        "mean": 8596.242121314808,
+        "min": 891.0,
+        "p50": 6346.0,
+        "p90": 16805.799999999996,
+        "p95": 26110.499999999978,
+        "p99": 61660.78000000004,
+        "max": 126195.0
+      },
+      "output_length": {
+        "column": "output_length",
+        "n_nonnull": 23608,
+        "n_null_or_nonfinite": 0,
+        "percentile_method": "numpy.percentile linear",
+        "mean": 182.1338952897323,
+        "min": 1.0,
+        "p50": 30.0,
+        "p90": 507.0,
+        "p95": 600.0,
+        "p99": 897.9300000000003,
+        "max": 2000.0
+      },
+      "prefix_reuse": {
+        "n_block_occurrences": 409616,
+        "n_reused_occurrences": 226316,
+        "n_unique_block_ids": 183300,
+        "reuse_fraction": 0.5525077145424007,
+        "method": "shifted_uint8_index",
+        "block_id_min": 0,
+        "block_id_max": 183299,
+        "mean_block_ids_per_request": 17.3507285665876,
+        "definition": "Prefix reuse is the fraction of block-id occurrences whose id appears in any strictly earlier request. Requests are ordered by (timestamp is null, timestamp, original row index), all ascending. Ids are marked seen only after the whole request is processed, so a repeated id inside one request is not reuse unless that id occurred in an earlier request. This is not the provider cache_read_tokens ratio.",
+        "timestamp_column": "timestamp",
+        "block_id_column": "hash_ids",
+        "documented_block_tokens": 512,
+        "documented_block_tokens_source": "valeriol29/mooncake-traces dataset card states 512-token hash blocks; not re-tokenized here"
+      },
+      "input_tokens_per_block": {
+        "column": "recorded_input_length_per_stored_block_id",
+        "n_nonnull": 23608,
+        "n_null_or_nonfinite": 0,
+        "percentile_method": "numpy.percentile linear",
+        "mean": 482.309810772601,
+        "min": 341.6666666666667,
+        "p50": 487.8666666666667,
+        "p90": 508.59410601265824,
+        "p95": 510.281941266209,
+        "p99": 511.6477777777778,
+        "max": 512.0,
+        "n_rows": 23608,
+        "meaning": "Recorded input length divided by the number of stored block ids. This is a comparison with the documented block size, not a new tokenization."
+      },
+      "pre_gap": null,
+      "requests_per_session": null,
+      "provider_cache": null,
+      "model_counts": null,
+      "notes": [
+        "No session_id column is present, so the session count is null."
+      ]
+    },
+    {
+      "trace_id": "lmcache",
+      "display_name": "LMCache",
+      "kind": "lmcache",
+      "source_repo": "sammshen/lmcache-agentic-traces or zeelHz/lmcache-agentic-traces",
+      "files": [
+        {
+          "path": "datasets/lmcache-agentic-traces/data/train-00000-of-00005.parquet",
+          "bytes": 502376957
+        },
+        {
+          "path": "datasets/lmcache-agentic-traces/data/train-00001-of-00005.parquet",
+          "bytes": 555802662
+        },
+        {
+          "path": "datasets/lmcache-agentic-traces/data/train-00002-of-00005.parquet",
+          "bytes": 476154555
+        },
+        {
+          "path": "datasets/lmcache-agentic-traces/data/train-00003-of-00005.parquet",
+          "bytes": 437652845
+        },
+        {
+          "path": "datasets/lmcache-agentic-traces/data/train-00004-of-00005.parquet",
+          "bytes": 398199928
+        }
+      ],
+      "n_requests": 24880,
+      "n_sessions": 767,
+      "n_null_session_id": 0,
+      "columns": [
+        {
+          "path": "datasets/lmcache-agentic-traces/data/train-00000-of-00005.parquet",
+          "columns": [
+            {
+              "name": "session_id",
+              "type": "string",
+              "nullable": true
+            },
+            {
+              "name": "model",
+              "type": "string",
+              "nullable": true
+            },
+            {
+              "name": "input",
+              "type": "list<element: struct<role: string, content: string, tool_calls: list<element: struct<id: string, type: string, function: struct<name: string, arguments: string>>>, tool_call_id: string, name: string>>",
+              "nullable": true
+            },
+            {
+              "name": "output_length",
+              "type": "int64",
+              "nullable": true
+            },
+            {
+              "name": "pre_gap",
+              "type": "double",
+              "nullable": true
+            }
+          ]
+        },
+        {
+          "path": "datasets/lmcache-agentic-traces/data/train-00001-of-00005.parquet",
+          "columns": [
+            {
+              "name": "session_id",
+              "type": "string",
+              "nullable": true
+            },
+            {
+              "name": "model",
+              "type": "string",
+              "nullable": true
+            },
+            {
+              "name": "input",
+              "type": "list<element: struct<role: string, content: string, tool_calls: list<element: struct<id: string, type: string, function: struct<name: string, arguments: string>>>, tool_call_id: string, name: string>>",
+              "nullable": true
+            },
+            {
+              "name": "output_length",
+              "type": "int64",
+              "nullable": true
+            },
+            {
+              "name": "pre_gap",
+              "type": "double",
+              "nullable": true
+            }
+          ]
+        },
+        {
+          "path": "datasets/lmcache-agentic-traces/data/train-00002-of-00005.parquet",
+          "columns": [
+            {
+              "name": "session_id",
+              "type": "string",
+              "nullable": true
+            },
+            {
+              "name": "model",
+              "type": "string",
+              "nullable": true
+            },
+            {
+              "name": "input",
+              "type": "list<element: struct<role: string, content: string, tool_calls: list<element: struct<id: string, type: string, function: struct<name: string, arguments: string>>>, tool_call_id: string, name: string>>",
+              "nullable": true
+            },
+            {
+              "name": "output_length",
+              "type": "int64",
+              "nullable": true
+            },
+            {
+              "name": "pre_gap",
+              "type": "double",
+              "nullable": true
+            }
+          ]
+        },
+        {
+          "path": "datasets/lmcache-agentic-traces/data/train-00003-of-00005.parquet",
+          "columns": [
+            {
+              "name": "session_id",
+              "type": "string",
+              "nullable": true
+            },
+            {
+              "name": "model",
+              "type": "string",
+              "nullable": true
+            },
+            {
+              "name": "input",
+              "type": "list<element: struct<role: string, content: string, tool_calls: list<element: struct<id: string, type: string, function: struct<name: string, arguments: string>>>, tool_call_id: string, name: string>>",
+              "nullable": true
+            },
+            {
+              "name": "output_length",
+              "type": "int64",
+              "nullable": true
+            },
+            {
+              "name": "pre_gap",
+              "type": "double",
+              "nullable": true
+            }
+          ]
+        },
+        {
+          "path": "datasets/lmcache-agentic-traces/data/train-00004-of-00005.parquet",
+          "columns": [
+            {
+              "name": "session_id",
+              "type": "string",
+              "nullable": true
+            },
+            {
+              "name": "model",
+              "type": "string",
+              "nullable": true
+            },
+            {
+              "name": "input",
+              "type": "list<element: struct<role: string, content: string, tool_calls: list<element: struct<id: string, type: string, function: struct<name: string, arguments: string>>>, tool_call_id: string, name: string>>",
+              "nullable": true
+            },
+            {
+              "name": "output_length",
+              "type": "int64",
+              "nullable": true
+            },
+            {
+              "name": "pre_gap",
+              "type": "double",
+              "nullable": true
+            }
+          ]
+        }
+      ],
+      "schemas_identical": true,
+      "timestamp_column": null,
+      "input_length": null,
+      "output_length": {
+        "column": "output_length",
+        "n_nonnull": 24880,
+        "n_null_or_nonfinite": 0,
+        "percentile_method": "numpy.percentile linear",
+        "mean": 211.2105305466238,
+        "min": 1.0,
+        "p50": 102.0,
+        "p90": 528.0,
+        "p95": 709.0499999999993,
+        "p99": 1262.2099999999991,
+        "max": 11445.0
+      },
+      "prefix_reuse": null,
+      "input_tokens_per_block": null,
+      "pre_gap": {
+        "column": "pre_gap",
+        "n_nonnull": 24880,
+        "n_null_or_nonfinite": 0,
+        "percentile_method": "numpy.percentile linear",
+        "mean": 2.019489091639871,
+        "min": 0.0,
+        "p50": 0.706,
+        "p90": 1.7541,
+        "p95": 3.4810999999999983,
+        "p99": 10.849698999999982,
+        "max": 1511.3727,
+        "frac_zero": 0.031109324758842444,
+        "frac_negative": 0.0,
+        "n_zero": 774,
+        "n_negative": 0,
+        "n_positive": 24106,
+        "unit": "seconds",
+        "unit_evidence": "pre_gap` | float | Seconds between the previous iteration's response completing (last streamed token) and this iteration's request being sent. This is the real tool-execution / user-thinking time. Always `0.0` for the first iteration of a session. Median: 0.71s, mean: 2.08s, p95: 3.73s. | | `output_length` | int | Completion tokens generated for this iteration. | ### Timing Model The `pre_gap` field captures the **client-side delay** between consecutive LLM calls within a session. This is the",
+        "unit_source": "datasets/lmcache-agentic-traces/README.md"
+      },
+      "requests_per_session": {
+        "column": "requests_per_session",
+        "n_nonnull": 767,
+        "n_null_or_nonfinite": 0,
+        "percentile_method": "numpy.percentile linear",
+        "mean": 32.4380704041721,
+        "min": 5.0,
+        "p50": 34.0,
+        "p90": 50.0,
+        "p95": 50.0,
+        "p99": 50.0,
+        "max": 50.0,
+        "n_sessions": 767
+      },
+      "provider_cache": null,
+      "model_counts": {
+        "minimax-m2.5": 18540,
+        "claude-sonnet-4-6": 3936,
+        "deepseek-v3.1": 2257,
+        "claude-opus-4-6": 147
+      },
+      "notes": [
+        "The input column is present but is not a numeric length. Message text was not tokenized, so input-length percentiles were not computed.",
+        "No hash_ids or block_ids column is present, so prefix reuse was not computed."
+      ]
+    },
+    {
+      "trace_id": "freeinference",
+      "display_name": "FreeInference",
+      "kind": "freeinference",
+      "source_repo": "harvardMadsys/freeinference_agentic_trace",
+      "files": [
+        {
+          "path": "datasets/freeinference-agentic-trace/week_2026_08_30/release/2026-08-30_2026-09-05/processed/requests.parquet",
+          "bytes": 1817646481
+        }
+      ],
+      "n_requests": 190544,
+      "n_sessions": 2047,
+      "n_null_session_id": 0,
+      "columns": [
+        {
+          "name": "session_id",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "step",
+          "type": "int32",
+          "nullable": true
+        },
+        {
+          "name": "link_reason",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "start_ms",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "end_ms",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "ttft_ms",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "model",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "provider",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "stream",
+          "type": "bool",
+          "nullable": true
+        },
+        {
+          "name": "step_trigger",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "waited_for",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "prompt_tokens",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "completion_tokens",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "cache_read_tokens",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "role_tokens",
+          "type": "struct<system: int64, user: int64, assistant: int64, tool: int64, tool_definitions: int64>",
+          "nullable": true
+        },
+        {
+          "name": "n_messages",
+          "type": "int32",
+          "nullable": true
+        },
+        {
+          "name": "tool_definition_names",
+          "type": "list<element: string>",
+          "nullable": true
+        },
+        {
+          "name": "finish_reason",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "transition",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "cause",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "block_ids",
+          "type": "large_list<element: int64>",
+          "nullable": true
+        }
+      ],
+      "schemas_identical": true,
+      "timestamp_column": "start_ms",
+      "input_length": {
+        "column": "prompt_tokens",
+        "n_nonnull": 190544,
+        "n_null_or_nonfinite": 0,
+        "percentile_method": "numpy.percentile linear",
+        "mean": 223417.13432592998,
+        "min": 1490.0,
+        "p50": 170024.0,
+        "p90": 483891.10000000003,
+        "p95": 614460.5,
+        "p99": 790378.3700000003,
+        "max": 1397924.0
+      },
+      "output_length": {
+        "column": "completion_tokens",
+        "n_nonnull": 190544,
+        "n_null_or_nonfinite": 0,
+        "percentile_method": "numpy.percentile linear",
+        "mean": 560.2476698295407,
+        "min": 0.0,
+        "p50": 273.0,
+        "p90": 1253.0,
+        "p95": 1939.0,
+        "p99": 4419.710000000021,
+        "max": 41736.0
+      },
+      "prefix_reuse": {
+        "n_block_occurrences": 2517111103,
+        "n_reused_occurrences": 2476131443,
+        "n_unique_block_ids": 40979660,
+        "reuse_fraction": 0.9837195664700066,
+        "method": "shifted_uint8_index",
+        "block_id_min": 1,
+        "block_id_max": 40979660,
+        "mean_block_ids_per_request": 13210.13048429759,
+        "definition": "Prefix reuse is the fraction of block-id occurrences whose id appears in any strictly earlier request. Requests are ordered by (timestamp is null, timestamp, original row index), all ascending. Ids are marked seen only after the whole request is processed, so a repeated id inside one request is not reuse unless that id occurred in an earlier request. This is not the provider cache_read_tokens ratio.",
+        "timestamp_column": "start_ms",
+        "block_id_column": "block_ids",
+        "documented_block_tokens": 16,
+        "documented_block_tokens_source": "FreeInference dataset card states chained 16-token blocks local to the week; not re-tokenized here"
+      },
+      "input_tokens_per_block": {
+        "column": "recorded_input_length_per_stored_block_id",
+        "n_nonnull": 190544,
+        "n_null_or_nonfinite": 0,
+        "percentile_method": "numpy.percentile linear",
+        "mean": 16.987210970732864,
+        "min": 3.1174398120963005,
+        "p50": 17.08797953333106,
+        "p90": 18.208957421080385,
+        "p95": 18.58655971046318,
+        "p99": 19.589698428253456,
+        "max": 163.30457038391225,
+        "n_rows": 190544,
+        "meaning": "Recorded input length divided by the number of stored block ids. This is a comparison with the documented block size, not a new tokenization."
+      },
+      "pre_gap": null,
+      "requests_per_session": {
+        "column": "requests_per_session",
+        "n_nonnull": 2047,
+        "n_null_or_nonfinite": 0,
+        "percentile_method": "numpy.percentile linear",
+        "mean": 93.08451392281387,
+        "min": 1.0,
+        "p50": 35.0,
+        "p90": 218.0,
+        "p95": 345.1999999999989,
+        "p99": 883.6199999999999,
+        "max": 5040.0,
+        "n_sessions": 2047
+      },
+      "provider_cache": {
+        "cache_column": "cache_read_tokens",
+        "input_column": "prompt_tokens",
+        "token_weighted_cache_read_over_prompt": 0.9747556374023261,
+        "median_per_request_cache_read_over_prompt": 0.9970420713016497,
+        "n_rows": 187219,
+        "note": "Provider-reported cache_read_tokens. This is not the causal block-id reuse fraction."
+      },
+      "model_counts": {
+        "deepseek-v4-flash": 109106,
+        "minimax-m3": 11644,
+        "glm-5.3": 6572,
+        "glm-5.3-flash": 51321,
+        "glm-5.2": 9106,
+        "qwen3.6-35b": 2412,
+        "kimi-k2.7-code": 244,
+        "diffusiongemma": 139
+      },
+      "notes": []
+    }
+  ],
+  "errors": [],
+  "figure": {
+    "png": "figures/fig2_trace_characterization.png",
+    "pdf": "figures/fig2_trace_characterization.pdf",
+    "png_bytes": 329906,
+    "pdf_bytes": 74936,
+    "dpi": 300
+  },
+  "figure_error": null,
+  "freeinference_split_file": "results/trace_stats/freeinference_split.json",
+  "download_status_file": "datasets/DOWNLOAD_STATUS.md"
+}

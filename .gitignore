@@ -1,0 +1,30 @@
+# Python bytecode & environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv*/
+venv/
+env/
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# Large downloaded trace datasets & model weights (re-fetch via dataset links in README)
+datasets/
+models/
+logs/
+*.parquet
+*.jsonl
+*.safetensors
+*.bin
+
+# Large per-request raw CSV dumps (>50 MB)
+results/sim/mooncake_requests.csv
+results/sim/lmcache_requests.csv
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

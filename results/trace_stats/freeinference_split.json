@@ -1,0 +1,39 @@
+{
+  "dataset": "harvardMadsys/freeinference_agentic_trace",
+  "config": "requests",
+  "split": "week_2026_08_30",
+  "files": [
+    "datasets/freeinference-agentic-trace/week_2026_08_30/release/2026-08-30_2026-09-05/processed/requests.parquet"
+  ],
+  "timestamp_column": "start_ms",
+  "n_rows": 190544,
+  "train_fraction_target": 0.7,
+  "n_train": 133380,
+  "n_test": 57164,
+  "actual_train_fraction": 0.6999958014946679,
+  "n_null_timestamp": 0,
+  "rule": "Let K = (timestamp_is_null, timestamp_value_or_0_when_null, original_row_index) with original_row_index the 0-based parquet scan order. Sort K ascending. n_train = (n_rows * 7) // 10. The first n_train rows are train and the rest are test. Because K includes the row index, keys are unique, so train rows are exactly those with K <= K_cut.",
+  "scheduler_tuning": false,
+  "cut": {
+    "last_train_original_row": 78002,
+    "last_train_timestamp_is_null": false,
+    "last_train_timestamp": 1788483614671,
+    "first_test_original_row": 178773,
+    "first_test_timestamp_is_null": false,
+    "first_test_timestamp": 1788483615229
+  },
+  "boundary_timestamp_shared_by_train_and_test": false,
+  "train_timestamp_min": 1788047915975,
+  "train_timestamp_max": 1788483614671,
+  "train_timestamp_min_utc": "2026-08-29T23:58:35.975000+00:00",
+  "train_timestamp_max_utc": "2026-09-04T01:00:14.671000+00:00",
+  "test_timestamp_min": 1788483615229,
+  "test_timestamp_max": 1788652796056,
+  "test_timestamp_min_utc": "2026-09-04T01:00:15.229000+00:00",
+  "test_timestamp_max_utc": "2026-09-05T23:59:56.056000+00:00",
+  "timestamp_interpretation": "start_ms values in [1e12, 2e12] were also written as UTC timestamps, interpreting the column as Unix epoch milliseconds.",
+  "n_sessions_train": 1406,
+  "n_sessions_test": 674,
+  "n_sessions_in_both": 33,
+  "session_split_note": "The split is by request row, not by session. Sessions listed in both sides cross the time cut."
+}

@@ -1,0 +1,7 @@
+# Citations of arXiv:2610.18444. Not measurements from this project.
+source: arXiv:2610.18444
+ocs_port_power_w: 0.39
+ocs_port_cost_usd: 520
+electrical_400g_port_power_w: 39.4
+electrical_400g_port_cost_usd_low: 583
+electrical_400g_port_cost_usd_high: 1090

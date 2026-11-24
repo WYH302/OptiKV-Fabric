@@ -1,0 +1,9 @@
+# Experiment 5: Tail Latency (P99 TTFT) & SLO Goodput Under Load
+seed: 0
+model: qwen2.5-7b-instruct-1m
+hardware_profile: h100_peak_spec
+context_tokens: 131072
+hit_rate: 0.90
+arrival_rates_rps: [0.5, 1.0, 2.0, 4.0, 6.0, 8.0, 12.0, 16.0]
+slo_ttft_s: 1.0
+policies: [no_cache, local_hbm, local_dram, rdma_routing, optical_naive, optical_reservation, optikv, oracle_infinite_hbm]

@@ -1,0 +1,63 @@
+seed: 0
+model: qwen2.5-7b-instruct
+dtype_bytes: 2
+hardware_profile: rtx3090
+calibration: configs/hardware/calibration_3090.yaml
+cost_ledger: configs/hardware/cost_ledger.yaml
+quadratic_extrapolation: false
+trace:
+  kind: synthetic
+  name: synthetic-main
+  block_tokens: 512
+  n_sessions: 4
+  turns_per_session: 3
+  prefix_blocks: 4
+  suffix_blocks: 1
+  gap_s: 2.0
+  inter_arrival_s: 0.05
+  output_tokens: 16
+  seed: 0
+  pin_workers: true
+  worker_count: 4
+cluster:
+  num_workers: 4
+  # KV-cache budget per worker, not the full 24 GB board.
+  hbm_bytes_per_worker: 8589934592
+  dram_bytes_per_worker: 68719476736
+  ssd_bytes_per_worker: 1099511627776
+  rdma_pool_bytes: 274877906944
+  dram_bandwidth_gb_s: 50
+  ssd_bandwidth_gb_s: 3
+  rdma_bandwidth_gb_s: 25
+  rdma_latency_us: 10
+  alpha_overlap: 0.7
+  ocs:
+    concurrent_links: 1
+    bandwidth_gb_s: 45.0
+    latency_us: 5
+    reconfig_us: 25000
+policies:
+  - no_cache
+  - local_hbm
+  - local_dram
+  - local_ssd
+  - rdma_routing
+  - optical_naive
+  - optical_reservation
+  - optikv
+  - oracle_infinite_bandwidth
+  - oracle_infinite_hbm
+  - eviction_s3fifo
+  - eviction_belady
+optikv:
+  enable_routing: true
+  enable_recompute_fallback: true
+  enable_placement: true
+  enable_prefetch: true
+  enable_eviction: true
+  prefetch_utilization_cap: 0.75
+  anchor_prefix_blocks: 2
+  recency_tau_s: 600.0
+  tier_hbm_min_p: 0.5
+  tier_dram_min_p: 0.2
+  tier_ssd_min_p: 0.05

@@ -1,0 +1,27 @@
+model,hardware_profile,scaling_label,calibration_status,prompt_tokens,prefill_source,prefill_s,quadratic_prefill_s
+qwen2.5-7b-instruct-1m,rtx3090,RTX 3090 24GB measured 7B (1K-32K) + validated roofline (3.16% MAPE),measured_7b_1k_32k,1024,measured,0.19526372662204144,0.17616804136647848
+qwen2.5-7b-instruct-1m,rtx3090,RTX 3090 24GB measured 7B (1K-32K) + validated roofline (3.16% MAPE),measured_7b_1k_32k,2048,measured,0.3925819013005476,0.38023919678061135
+qwen2.5-7b-instruct-1m,rtx3090,RTX 3090 24GB measured 7B (1K-32K) + validated roofline (3.16% MAPE),measured_7b_1k_32k,4096,measured,0.7865386178093059,0.8077028173063784
+qwen2.5-7b-instruct-1m,rtx3090,RTX 3090 24GB measured 7B (1K-32K) + validated roofline (3.16% MAPE),measured_7b_1k_32k,8192,measured,1.6645063795806172,1.7399152971479184
+qwen2.5-7b-instruct-1m,rtx3090,RTX 3090 24GB measured 7B (1K-32K) + validated roofline (3.16% MAPE),measured_7b_1k_32k,12288,measured,2.828596242485617,2.7751747620427984
+qwen2.5-7b-instruct-1m,rtx3090,RTX 3090 24GB measured 7B (1K-32K) + validated roofline (3.16% MAPE),measured_7b_1k_32k,16384,measured,3.9515666855214957,3.9134812119910203
+qwen2.5-7b-instruct-1m,rtx3090,RTX 3090 24GB measured 7B (1K-32K) + validated roofline (3.16% MAPE),measured_7b_1k_32k,24576,measured,6.456359553666802,6.499235067047484
+qwen2.5-7b-instruct-1m,rtx3090,RTX 3090 24GB measured 7B (1K-32K) + validated roofline (3.16% MAPE),measured_7b_1k_32k,32768,measured,9.505139975995187,9.49717686231731
+qwen2.5-7b-instruct-1m,rtx3090,RTX 3090 24GB measured 7B (1K-32K) + validated roofline (3.16% MAPE),measured_7b_1k_32k,65536,roofline_extrapolated,24.191520369675708,25.61082344553025
+qwen2.5-7b-instruct-1m,rtx3090,RTX 3090 24GB measured 7B (1K-32K) + validated roofline (3.16% MAPE),measured_7b_1k_32k,131072,roofline_extrapolated,72.66521302601014,77.62313774219754
+qwen2.5-7b-instruct-1m,rtx3090,RTX 3090 24GB measured 7B (1K-32K) + validated roofline (3.16% MAPE),measured_7b_1k_32k,262144,roofline_extrapolated,242.45911519865507,260.78785085649787
+qwen2.5-7b-instruct-1m,rtx3090,RTX 3090 24GB measured 7B (1K-32K) + validated roofline (3.16% MAPE),measured_7b_1k_32k,524288,roofline_extrapolated,873.4329869838493,943.6776151689611
+qwen2.5-7b-instruct-1m,rtx3090,RTX 3090 24GB measured 7B (1K-32K) + validated roofline (3.16% MAPE),measured_7b_1k_32k,1000000,roofline_extrapolated,3010.6919353798003,3260.87201142058
+qwen2.5-7b-instruct-1m,h100_peak_spec,"H100 SXM peak-spec scaling (989/71 compute, 3.35/0.936 HBM BW; not a direct H100 measurement)",h100_peak_spec_scaled,1024,h100_peak_spec_roofline,0.013742957817745167,
+qwen2.5-7b-instruct-1m,h100_peak_spec,"H100 SXM peak-spec scaling (989/71 compute, 3.35/0.936 HBM BW; not a direct H100 measurement)",h100_peak_spec_scaled,2048,h100_peak_spec_roofline,0.0279115039014236,
+qwen2.5-7b-instruct-1m,h100_peak_spec,"H100 SXM peak-spec scaling (989/71 compute, 3.35/0.936 HBM BW; not a direct H100 measurement)",h100_peak_spec_scaled,4096,h100_peak_spec_roofline,0.057525360866580263,
+qwen2.5-7b-instruct-1m,h100_peak_spec,"H100 SXM peak-spec scaling (989/71 compute, 3.35/0.936 HBM BW; not a direct H100 measurement)",h100_peak_spec_scaled,8192,h100_peak_spec_roofline,0.12186013398809278,
+qwen2.5-7b-instruct-1m,h100_peak_spec,"H100 SXM peak-spec scaling (989/71 compute, 3.35/0.936 HBM BW; not a direct H100 measurement)",h100_peak_spec_scaled,12288,h100_peak_spec_roofline,0.19300431936453755,
+qwen2.5-7b-instruct-1m,h100_peak_spec,"H100 SXM peak-spec scaling (989/71 compute, 3.35/0.936 HBM BW; not a direct H100 measurement)",h100_peak_spec_scaled,16384,h100_peak_spec_roofline,0.2709579169959146,
+qwen2.5-7b-instruct-1m,h100_peak_spec,"H100 SXM peak-spec scaling (989/71 compute, 3.35/0.936 HBM BW; not a direct H100 measurement)",h100_peak_spec_scaled,24576,h100_peak_spec_roofline,0.4472933490234654,
+qwen2.5-7b-instruct-1m,h100_peak_spec,"H100 SXM peak-spec scaling (989/71 compute, 3.35/0.936 HBM BW; not a direct H100 measurement)",h100_peak_spec_scaled,32768,h100_peak_spec_roofline,0.6508664300707452,
+qwen2.5-7b-instruct-1m,h100_peak_spec,"H100 SXM peak-spec scaling (989/71 compute, 3.35/0.936 HBM BW; not a direct H100 measurement)",h100_peak_spec_scaled,65536,h100_peak_spec_roofline,1.7375352444571548,
+qwen2.5-7b-instruct-1m,h100_peak_spec,"H100 SXM peak-spec scaling (989/71 compute, 3.35/0.936 HBM BW; not a direct H100 measurement)",h100_peak_spec_scaled,131072,h100_peak_spec_roofline,5.218280026176966,
+qwen2.5-7b-instruct-1m,h100_peak_spec,"H100 SXM peak-spec scaling (989/71 compute, 3.35/0.936 HBM BW; not a direct H100 measurement)",h100_peak_spec_scaled,262144,h100_peak_spec_roofline,17.409398201404564,
+qwen2.5-7b-instruct-1m,h100_peak_spec,"H100 SXM peak-spec scaling (989/71 compute, 3.35/0.936 HBM BW; not a direct H100 measurement)",h100_peak_spec_scaled,524288,h100_peak_spec_roofline,62.71014899901164,
+qwen2.5-7b-instruct-1m,h100_peak_spec,"H100 SXM peak-spec scaling (989/71 compute, 3.35/0.936 HBM BW; not a direct H100 measurement)",h100_peak_spec_scaled,1000000,h100_peak_spec_roofline,216.14934976563092,

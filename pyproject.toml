@@ -1,0 +1,17 @@
+[project]
+name = "optikv-fabric"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy",
+  "pandas",
+  "pyyaml",
+  "matplotlib",
+  "pyarrow",
+  "pytest",
+  "requests",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

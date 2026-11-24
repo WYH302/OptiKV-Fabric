@@ -1,0 +1,61 @@
+# Experiment 1: Real-Trace Dual-Regime Evaluation (Mooncake, LMCache, FreeInference)
+seed: 0
+model: qwen2.5-7b-instruct-1m
+dtype_bytes: 2
+calibration: configs/hardware/calibration_3090.yaml
+cost_ledger: configs/hardware/cost_ledger.yaml
+suites:
+  - name: mooncake_h100_siph
+    trace: datasets/mooncake-traces/mooncake/train-00000-of-00001.parquet
+    hardware_profile: h100_peak_spec
+    num_workers: 8
+    hbm_gib_per_worker: 4.0
+    dram_gib_per_worker: 64.0
+    pool_gib: 256.0
+    rdma_bw_gb_s: 25.0
+    ocs_bw_gb_s: 200.0
+    ocs_reconfig_us: 10.0
+    ocs_concurrent_links: 2
+    alpha_overlap: 0.7
+    slo_ttft_s: 0.5
+  - name: mooncake_h100_mems
+    trace: datasets/mooncake-traces/mooncake/train-00000-of-00001.parquet
+    hardware_profile: h100_peak_spec
+    num_workers: 8
+    hbm_gib_per_worker: 4.0
+    rdma_bw_gb_s: 25.0
+    ocs_bw_gb_s: 200.0
+    ocs_reconfig_us: 25000.0
+    ocs_concurrent_links: 2
+    alpha_overlap: 0.7
+    slo_ttft_s: 0.5
+  - name: mooncake_3090_calibrated
+    trace: datasets/mooncake-traces/mooncake/train-00000-of-00001.parquet
+    hardware_profile: rtx3090
+    slice_requests: 2000
+    paced_rps: 0.8
+    num_workers: 8
+    hbm_gib_per_worker: 4.0
+    dram_bw_gb_s: 26.28
+    rdma_bw_gb_s: 25.0
+    ocs_bw_gb_s: 45.0
+    ocs_reconfig_us: 25000.0
+    slo_ttft_s: 2.0
+  - name: lmcache_h100_mems
+    trace: datasets/lmcache-agentic-traces/tokenized_512.parquet
+    hardware_profile: h100_peak_spec
+    num_workers: 8
+    hbm_gib_per_worker: 4.0
+    rdma_bw_gb_s: 25.0
+    ocs_bw_gb_s: 200.0
+    ocs_reconfig_us: 25000.0
+    slo_ttft_s: 0.25
+  - name: freeinference_h100_mems
+    trace: datasets/freeinference-agentic-trace/long_sessions_40.parquet
+    hardware_profile: h100_peak_spec
+    num_workers: 8
+    hbm_gib_per_worker: 12.0
+    rdma_bw_gb_s: 25.0
+    ocs_bw_gb_s: 200.0
+    ocs_reconfig_us: 25000.0
+    slo_ttft_s: 1.0

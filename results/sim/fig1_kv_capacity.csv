@@ -1,0 +1,9 @@
+model,hf_id,source_status,kv_arch,num_hidden_layers,num_full_attention_layers,num_linear_attention_layers,kv_bytes_bf16,kv_bytes_fp8,kv_kib_bf16,kv_kib_fp8,gib_at_128k_bf16,gib_at_1m_bf16,gib_at_1m_fp8,tokens_in_24gib_bf16,tokens_in_80gib_bf16,simulation_context_cap
+deepseek-v3,deepseek-ai/DeepSeek-V3,downloaded,mla,61,61,0,70272,35136,68.625,34.3125,8.578125,65.4458999633789,32.72294998168945,366715,1222383,131072
+llama-3.1-70b,meta-llama/Llama-3.1-70B-Instruct,hardcoded_gated,gqa,80,80,0,327680,163840,320.0,160.0,40.0,305.17578125,152.587890625,78643,262144,131072
+llama-3.1-8b,meta-llama/Llama-3.1-8B-Instruct,hardcoded_gated,gqa,32,32,0,131072,65536,128.0,64.0,16.0,122.0703125,61.03515625,196608,655360,131072
+qwen2.5-7b-instruct-1m,Qwen/Qwen2.5-7B-Instruct-1M,downloaded,gqa,28,28,0,57344,28672,56.0,28.0,7.0,53.40576171875,26.702880859375,449389,1497965,1010000
+qwen2.5-7b-instruct,Qwen/Qwen2.5-7B-Instruct,downloaded,gqa,28,28,0,57344,28672,56.0,28.0,7.0,53.40576171875,26.702880859375,449389,1497965,32768
+qwen3-8b,Qwen/Qwen3-8B,downloaded,gqa,36,36,0,147456,73728,144.0,72.0,18.0,137.3291015625,68.66455078125,174762,582542,131072
+qwen3-next-80b-a3b,Qwen/Qwen3-Next-80B-A3B-Instruct,downloaded,hybrid_gqa,48,12,36,24576,12288,24.0,12.0,3.0,22.88818359375,11.444091796875,1048576,3495253,262144
+qwen3.5-9b,Qwen/Qwen3.5-9B,downloaded,hybrid_gqa,32,8,24,32768,16384,32.0,16.0,4.0,30.517578125,15.2587890625,786432,2621440,262144

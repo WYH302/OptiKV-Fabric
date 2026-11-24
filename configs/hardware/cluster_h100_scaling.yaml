@@ -1,0 +1,23 @@
+# Source: published peak specifications, not a measurement on an H100.
+# compute_scale = 989/71
+#   989 TFLOP/s: NVIDIA H100 SXM FP16 Tensor Core dense peak.
+#   71 TFLOP/s: RTX 3090 FP16 Tensor Core peak used for this peak-spec ratio.
+# bandwidth_scale = 3.35/0.936
+#   3.35 TB/s: NVIDIA H100 SXM HBM3 peak bandwidth.
+#   0.936 TB/s: RTX 3090 GDDR6X peak bandwidth (936 GB/s).
+# Do not multiply the measured RTX 3090 TTFT curve by compute_scale,
+# by bandwidth_scale, or by a single factor such as 6 or 7.
+# Scale a compute-bound term by compute_scale and a bandwidth-bound term
+# by bandwidth_scale separately. This file is not an H100 measurement.
+
+scaling_basis: peak-spec
+measured_on_h100: false
+apply_to_entire_ttft_curve: false
+compute_scale_numerator_tflops: 989
+compute_scale_denominator_tflops: 71
+compute_scale: 13.929577464788732
+bandwidth_scale_numerator_TBps: 3.35
+bandwidth_scale_denominator_TBps: 0.936
+bandwidth_scale: 3.579059829059829
+compute_scale_expr: "989/71"
+bandwidth_scale_expr: "3.35/0.936"

@@ -1,0 +1,19 @@
+# Experiment 2: Break-Even Design Space Heatmap (2K..1M x 0%..95% prefix reuse)
+seed: 0
+model: qwen2.5-7b-instruct-1m
+dtype_bytes: 2
+hardware_profile: h100_peak_spec
+contexts: [2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1000000]
+hit_rates: [0.0, 0.25, 0.50, 0.75, 0.90, 0.95]
+cluster:
+  num_workers: 8
+  hbm_gib_per_worker: 16.0
+  dram_gib_per_worker: 64.0
+  pool_gib: 512.0
+  rdma_bw_gb_s: 25.0
+  ocs_bw_gb_s: 200.0
+  ocs_reconfig_us: 25000.0
+  ocs_concurrent_links: 2
+  alpha_overlap: 0.7
+policies: [no_cache, rdma_routing, optical_naive, optical_reservation, optikv]
+no_benefit_threshold_vs_rdma: 1.05

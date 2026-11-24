@@ -1,0 +1,25 @@
+\begin{table*}[t]
+\centering
+\caption{End-to-end TTFT (P50 / P99), prefix hit rate, and OCS duty cycle across real production/agentic traces and 128K multi-turn serving (H100 peak-spec scaling, 8 workers, RDMA 25\,GB/s vs.\ OCS 200\,GB/s).}
+\label{tab:main-results}
+\scriptsize
+\setlength{\tabcolsep}{3.8pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{l|cc|cc|cc|ccc}
+\toprule
+ & \multicolumn{2}{c|}{\textbf{Mooncake Full (SiPh 10\,$\mu$s)}} & \multicolumn{2}{c|}{\textbf{LMCache (MEMS 25\,ms)}} & \multicolumn{2}{c|}{\textbf{FreeInference (MEMS 25\,ms)}} & \multicolumn{3}{c}{\textbf{128K Agentic (MEMS 25\,ms)}} \\
+\textbf{Policy} & P50 / P99 & Hit & P50 / P99 & Hit & P50 / P99 & Hit & P50 / P99 & Hit & Duty \\
+\midrule
+NoCache & 157\,ms / 1.66\,s & 0.0\% & 53.18\,s / 173.55\,s & 0.0\% & 5.69\,s / 28.53\,s & 0.0\% & 50.94\,s / 98.87\,s & 0.0\% & -- \\
+Local-HBM & 44.6\,ms / 1.60\,s & 32.7\% & 26.58\,s / 108.60\,s & 36.5\% & 3.30\,s / 20.19\,s & 11.8\% & 47.01\,s / 94.34\,s & 3.6\% & -- \\
+Local-DRAM & 32.3\,ms / 1.53\,s & 38.1\% & 436\,ms / 4.46\,s & 76.7\% & 554\,ms / 6.06\,s & 66.6\% & 24.80\,s / 49.65\,s & 39.4\% & -- \\
+RDMA+Routing & 25.8\,ms / 1.17\,s & 54.7\% & 25.3\,ms / 115\,ms & 96.2\% & 91.3\,ms / 3.79\,s & 94.2\% & 169\,ms / 5.22\,s & 87.2\% & -- \\
+Optical-Naive & 33.6\,ms / 1.59\,s & 35.3\% & 15.77\,s / 70.06\,s & 60.2\% & 264\,ms / 8.59\,s & 58.6\% & 13.89\,s / 22.58\,s & 63.3\% & 54.4\% \\
+Optical-Reservation & 33.7\,ms / 1.59\,s & 35.2\% & 15.71\,s / 70.57\,s & 57.7\% & 1.47\,s / 8.96\,s & 44.7\% & 21.81\,s / 34.13\,s & 55.9\% & 60.8\% \\
+\midrule
+\textbf{OptiKV-Fabric} & 26.2\,ms / 1.18\,s & 52.4\% & 18.5\,ms / 116\,ms & 96.2\% & 44.9\,ms / 3.79\,s & 94.2\% & 36.3\,ms / 5.22\,s & 87.2\% & 77.3\% \\
+Oracle (Bound) & 10.9\,ms / 1.04\,s & 57.1\% & 17.7\,ms / 115\,ms & 96.2\% & 43.2\,ms / 3.79\,s & 94.2\% & 36.3\,ms / 5.22\,s & 87.2\% & -- \\
+\bottomrule
+\end{tabular}%
+}
+\end{table*}

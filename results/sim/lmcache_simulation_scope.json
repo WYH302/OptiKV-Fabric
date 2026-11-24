@@ -1,0 +1,23 @@
+{
+  "dataset": "lmcache-agentic-traces",
+  "tokenizer_model": "models\\Qwen2.5-7B-Instruct",
+  "block_tokens": 512,
+  "block_id_scheme": "sha256 of comma-joined token ids per 512-token chunk",
+  "simulated_requests": 24880,
+  "skipped": 0,
+  "input_tokens_min": 330,
+  "input_tokens_median": 24086.0,
+  "input_tokens_max": 103637,
+  "block_level_reuse": "native tokenizer chunk hashes",
+  "ttft_simulated": true,
+  "policies": [
+    "no_cache",
+    "local_hbm",
+    "rdma_routing",
+    "optical_naive",
+    "optical_reservation",
+    "optikv",
+    "oracle_infinite_hbm"
+  ],
+  "note": "tokenizer-derived 512-token blocks from rendered messages; block ids hash each chunk's token ids. The release has no hash_ids."
+}

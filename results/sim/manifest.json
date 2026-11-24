@@ -1,0 +1,4 @@
+{
+  "calibration_status": "provisional",
+  "note": "Updated by this script from the CSVs it writes. GPU status is provisional unless results/3090/prefill_median.csv has source=vllm."
+}

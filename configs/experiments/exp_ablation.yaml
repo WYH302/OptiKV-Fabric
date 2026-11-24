@@ -1,0 +1,15 @@
+# Experiment 4: Stepwise Cumulative Ablation, Modern Eviction & P(reuse) Noise Robustness
+seed: 0
+model: qwen2.5-7b-instruct-1m
+hardware_profile: h100_peak_spec
+ablation_progression:
+  - Optical-Naive
+  - +StandingCircuit
+  - +OpticalRouting
+  - +RecomputeAbort
+  - +TierPlacement
+  - +WindowedPrefetch
+  - +ReuseEviction (Full)
+eviction_baselines: [LRU, S3-FIFO, OptiKV-GDSF, Belady]
+noise_std_grid: [0.0, 0.05, 0.10, 0.20]
+noise_seeds: [0, 1, 2]

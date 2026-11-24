@@ -1,0 +1,5 @@
+model,dtype,target_tokens,actual_tokens,ttft_s,note
+"Qwen2.5-0.5B-Instruct (smoke model, not 7B)",bfloat16,1024,1024,0.022114754,"smoke model, not 7B"
+"Qwen2.5-0.5B-Instruct (smoke model, not 7B)",bfloat16,2048,2048,0.038978100,"smoke model, not 7B"
+"Qwen2.5-0.5B-Instruct (smoke model, not 7B)",bfloat16,4096,4096,0.066551924,"smoke model, not 7B"
+"Qwen2.5-0.5B-Instruct (smoke model, not 7B)",bfloat16,8192,8192,0.141528845,max_model_len=8193 because an 8192-token prompt plus 1 output token does not fit in max_model_len 8192

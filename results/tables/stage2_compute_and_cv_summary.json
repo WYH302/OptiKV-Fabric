@@ -1,0 +1,298 @@
+{
+  "rtx3090_hardware_budget": {
+    "gpu_model": "NVIDIA GeForce RTX 3090 (24 GiB GDDR6X, 71 TFLOP/s dense BF16, 936 GB/s)",
+    "framework": "vLLM 0.34.0 + PyTorch 2.14.0+cu132 (BF16, gpu_memory_utilization=0.88)",
+    "n_prefill_runs": 32,
+    "n_decode_runs": 24,
+    "n_prefix_runs": 12,
+    "active_gpu_inference_s": 193.35,
+    "prefill_active_s": 104.2,
+    "decode_active_s": 80.72,
+    "prefix_active_s": 8.42,
+    "total_campaign_wall_min_est": 18.0,
+    "peak_vram_mib": 23995,
+    "peak_vram_gib": 23.43,
+    "model_weights_bf16_gib": 14.2,
+    "prefill_4k_tok_s": 5204.7,
+    "prefill_32k_tok_s": 3446.5,
+    "pcie_4gib_gb_s": 26.28,
+    "optikv_trainable_params": 0
+  },
+  "scheduler_cpu_overhead": {
+    "benchmark_trace": "lmcache-fold0",
+    "num_requests": 4960,
+    "optikv_sim_wall_s": 8.21,
+    "rdma_sim_wall_s": 4.162,
+    "optikv_per_req_ms": 1.655,
+    "rdma_per_req_ms": 0.839,
+    "optikv_req_per_s_python": 604.2,
+    "optikv_p50_ms": 18.46
+  },
+  "cv_5fold_lmcache": {
+    "local_dram": {
+      "p50_ms_mean": 1768.57,
+      "p50_ms_std": 856.25,
+      "p99_ms_mean": 4465.08,
+      "p99_ms_std": 1330.12,
+      "hit_pct_mean": 74.47,
+      "hit_pct_std": 0.36,
+      "duty_pct_mean": 0.0,
+      "duty_pct_std": 0.0,
+      "goodput_per_watt_mean": 0.005
+    },
+    "rdma_routing": {
+      "p50_ms_mean": 24.55,
+      "p50_ms_std": 1.21,
+      "p99_ms_mean": 155.69,
+      "p99_ms_std": 11.24,
+      "hit_pct_mean": 95.57,
+      "hit_pct_std": 0.05,
+      "duty_pct_mean": 0.0,
+      "duty_pct_std": 0.0,
+      "goodput_per_watt_mean": 0.0184
+    },
+    "rdma_prefetch": {
+      "p50_ms_mean": 17.06,
+      "p50_ms_std": 0.27,
+      "p99_ms_mean": 153.83,
+      "p99_ms_std": 10.74,
+      "hit_pct_mean": 95.57,
+      "hit_pct_std": 0.05,
+      "duty_pct_mean": 0.0,
+      "duty_pct_std": 0.0,
+      "goodput_per_watt_mean": 0.0184
+    },
+    "optical_naive": {
+      "p50_ms_mean": 35370.88,
+      "p50_ms_std": 4386.23,
+      "p99_ms_mean": 64157.38,
+      "p99_ms_std": 4420.64,
+      "hit_pct_mean": 57.17,
+      "hit_pct_std": 1.39,
+      "duty_pct_mean": 11.67,
+      "duty_pct_std": 0.39,
+      "goodput_per_watt_mean": 0.2977
+    },
+    "optical_reservation": {
+      "p50_ms_mean": 35652.08,
+      "p50_ms_std": 4429.81,
+      "p99_ms_mean": 64424.65,
+      "p99_ms_std": 5380.76,
+      "hit_pct_mean": 54.74,
+      "hit_pct_std": 1.35,
+      "duty_pct_mean": 20.53,
+      "duty_pct_std": 0.69,
+      "goodput_per_watt_mean": 0.2902
+    },
+    "optikv": {
+      "p50_ms_mean": 18.37,
+      "p50_ms_std": 0.36,
+      "p99_ms_mean": 172.86,
+      "p99_ms_std": 13.18,
+      "hit_pct_mean": 95.38,
+      "hit_pct_std": 0.07,
+      "duty_pct_mean": 92.95,
+      "duty_pct_std": 0.77,
+      "goodput_per_watt_mean": 1.8559
+    },
+    "oracle_infinite_hbm": {
+      "p50_ms_mean": 16.89,
+      "p50_ms_std": 0.27,
+      "p99_ms_mean": 153.12,
+      "p99_ms_std": 10.14,
+      "hit_pct_mean": 95.58,
+      "hit_pct_std": 0.05,
+      "duty_pct_mean": 0.0,
+      "duty_pct_std": 0.0,
+      "goodput_per_watt_mean": 0.0184
+    },
+    "paired_p50_reduction_vs_rdma_pct_mean": 25.08,
+    "paired_p50_reduction_vs_rdma_pct_std": 2.22,
+    "paired_p50_reduction_vs_rdma_prefetch_pct_mean": -7.72,
+    "paired_p50_reduction_vs_rdma_prefetch_pct_std": 1.04
+  },
+  "cv_5fold_freeinference": {
+    "local_dram": {
+      "p50_ms_mean": 554.06,
+      "p50_ms_std": 163.37,
+      "p99_ms_mean": 5621.04,
+      "p99_ms_std": 3539.5,
+      "hit_pct_mean": 67.33,
+      "hit_pct_std": 4.21,
+      "duty_pct_mean": 0.0,
+      "duty_pct_std": 0.0,
+      "goodput_per_watt_mean": 0.001
+    },
+    "rdma_routing": {
+      "p50_ms_mean": 74.83,
+      "p50_ms_std": 28.57,
+      "p99_ms_mean": 4153.08,
+      "p99_ms_std": 2733.33,
+      "hit_pct_mean": 92.81,
+      "hit_pct_std": 2.54,
+      "duty_pct_mean": 0.0,
+      "duty_pct_std": 0.0,
+      "goodput_per_watt_mean": 0.0013
+    },
+    "rdma_prefetch": {
+      "p50_ms_mean": 62.24,
+      "p50_ms_std": 27.96,
+      "p99_ms_mean": 4153.08,
+      "p99_ms_std": 2733.33,
+      "hit_pct_mean": 92.81,
+      "hit_pct_std": 2.54,
+      "duty_pct_mean": 0.0,
+      "duty_pct_std": 0.0,
+      "goodput_per_watt_mean": 0.0013
+    },
+    "optical_naive": {
+      "p50_ms_mean": 486.22,
+      "p50_ms_std": 826.68,
+      "p99_ms_mean": 6522.55,
+      "p99_ms_std": 4464.47,
+      "hit_pct_mean": 70.08,
+      "hit_pct_std": 21.83,
+      "duty_pct_mean": 19.03,
+      "duty_pct_std": 4.19,
+      "goodput_per_watt_mean": 0.1122
+    },
+    "optical_reservation": {
+      "p50_ms_mean": 684.71,
+      "p50_ms_std": 974.61,
+      "p99_ms_mean": 7169.62,
+      "p99_ms_std": 4126.62,
+      "hit_pct_mean": 59.2,
+      "hit_pct_std": 17.37,
+      "duty_pct_mean": 48.23,
+      "duty_pct_std": 4.53,
+      "goodput_per_watt_mean": 0.0954
+    },
+    "optikv": {
+      "p50_ms_mean": 57.37,
+      "p50_ms_std": 26.73,
+      "p99_ms_mean": 4153.08,
+      "p99_ms_std": 2733.33,
+      "hit_pct_mean": 92.81,
+      "hit_pct_std": 2.54,
+      "duty_pct_mean": 80.43,
+      "duty_pct_std": 8.37,
+      "goodput_per_watt_mean": 0.1355
+    },
+    "oracle_infinite_hbm": {
+      "p50_ms_mean": 57.08,
+      "p50_ms_std": 26.81,
+      "p99_ms_mean": 4153.08,
+      "p99_ms_std": 2733.33,
+      "hit_pct_mean": 92.81,
+      "hit_pct_std": 2.54,
+      "duty_pct_mean": 0.0,
+      "duty_pct_std": 0.0,
+      "goodput_per_watt_mean": 0.0013
+    },
+    "paired_p50_reduction_vs_rdma_pct_mean": 25.04,
+    "paired_p50_reduction_vs_rdma_pct_std": 9.92,
+    "paired_p50_reduction_vs_rdma_prefetch_pct_mean": 7.03,
+    "paired_p50_reduction_vs_rdma_prefetch_pct_std": 10.95
+  },
+  "hyperparam_roi": [
+    {
+      "param_name": "U_cap",
+      "param_value": 0.5,
+      "p50_ms": 36.26,
+      "mean_transfer_ms": 10.46,
+      "prefetch_bursts": 117,
+      "ocs_duty_pct": 77.55,
+      "hit_pct": 87.04
+    },
+    {
+      "param_name": "U_cap",
+      "param_value": 0.65,
+      "p50_ms": 36.26,
+      "mean_transfer_ms": 10.38,
+      "prefetch_bursts": 117,
+      "ocs_duty_pct": 78.21,
+      "hit_pct": 87.04
+    },
+    {
+      "param_name": "U_cap",
+      "param_value": 0.75,
+      "p50_ms": 36.26,
+      "mean_transfer_ms": 11.0,
+      "prefetch_bursts": 113,
+      "ocs_duty_pct": 77.36,
+      "hit_pct": 87.03
+    },
+    {
+      "param_name": "U_cap",
+      "param_value": 0.85,
+      "p50_ms": 36.26,
+      "mean_transfer_ms": 11.0,
+      "prefetch_bursts": 113,
+      "ocs_duty_pct": 77.36,
+      "hit_pct": 87.03
+    },
+    {
+      "param_name": "K_anchor",
+      "param_value": 0,
+      "p50_ms": 36.26,
+      "mean_transfer_ms": 9.18,
+      "prefetch_bursts": 123,
+      "ocs_duty_pct": 89.08,
+      "hit_pct": 87.03
+    },
+    {
+      "param_name": "K_anchor",
+      "param_value": 2,
+      "p50_ms": 36.26,
+      "mean_transfer_ms": 10.99,
+      "prefetch_bursts": 113,
+      "ocs_duty_pct": 77.38,
+      "hit_pct": 87.03
+    },
+    {
+      "param_name": "K_anchor",
+      "param_value": 4,
+      "p50_ms": 36.26,
+      "mean_transfer_ms": 11.0,
+      "prefetch_bursts": 113,
+      "ocs_duty_pct": 77.36,
+      "hit_pct": 87.03
+    },
+    {
+      "param_name": "K_anchor",
+      "param_value": 8,
+      "p50_ms": 36.26,
+      "mean_transfer_ms": 11.08,
+      "prefetch_bursts": 111,
+      "ocs_duty_pct": 77.5,
+      "hit_pct": 87.03
+    },
+    {
+      "param_name": "theta_dram",
+      "param_value": 0.15,
+      "p50_ms": 36.26,
+      "mean_transfer_ms": 11.0,
+      "prefetch_bursts": 113,
+      "ocs_duty_pct": 76.6,
+      "hit_pct": 87.03
+    },
+    {
+      "param_name": "theta_dram",
+      "param_value": 0.25,
+      "p50_ms": 36.26,
+      "mean_transfer_ms": 11.0,
+      "prefetch_bursts": 113,
+      "ocs_duty_pct": 77.36,
+      "hit_pct": 87.03
+    },
+    {
+      "param_name": "theta_dram",
+      "param_value": 0.4,
+      "p50_ms": 36.26,
+      "mean_transfer_ms": 11.0,
+      "prefetch_bursts": 113,
+      "ocs_duty_pct": 77.36,
+      "hit_pct": 87.03
+    }
+  ]
+}
