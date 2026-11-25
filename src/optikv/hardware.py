@@ -78,6 +78,10 @@ class Cluster:
     ocs_bandwidth_gb_s: float
     ocs_latency_us: float
     ocs_reconfig_us: float
+    bipartite_port_contention: bool = False
+    wdm_wavelengths: int = 1
+    couple_decode_queue: bool = False
+    decode_batch_slots: int = 16
 
     def __post_init__(self) -> None:
         if self.ocs_concurrent_links not in LEGAL_CONCURRENT_LINKS:
@@ -122,6 +126,10 @@ def cluster_from_dict(raw: dict) -> Cluster:
         ocs_bandwidth_gb_s=float(ocs.get("bandwidth_gb_s", 45.0)),
         ocs_latency_us=float(ocs.get("latency_us", 5.0)),
         ocs_reconfig_us=float(ocs.get("reconfig_us", 25000.0)),
+        bipartite_port_contention=bool(ocs.get("bipartite_port_contention", raw.get("bipartite_port_contention", False))),
+        wdm_wavelengths=int(ocs.get("wdm_wavelengths", raw.get("wdm_wavelengths", 1))),
+        couple_decode_queue=bool(raw.get("couple_decode_queue", False)),
+        decode_batch_slots=int(raw.get("decode_batch_slots", 16)),
     )
 
 

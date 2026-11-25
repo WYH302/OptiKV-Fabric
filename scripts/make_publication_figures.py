@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate all 8 publication-grade ACM TACO / IEEE TPDS figures (PDF + 300-DPI PNG).
+"""Generate all 9 publication-grade ACM TACO / IEEE TPDS / JOSC figures (PDF + 300-DPI PNG).
 
 Every numerical plot reads directly from results/sim/, results/3090/, results/trace_stats/,
 and datasets/ (for empirical CDFs). Zero numbers are invented.
@@ -53,6 +53,7 @@ plt.rcParams.update(
 C_OPTIKV = "#009E73"
 C_RDMA = "#222222"
 C_RDMA_PF = "#B03A6E"
+C_CONCUR = "#8C564B"
 C_RESV = "#56B4E9"
 C_NAIVE = "#D55E00"
 C_HBM = "#0072B2"
@@ -67,11 +68,14 @@ POLICY_LABEL = {
     "local_dram": "Local-DRAM",
     "local_ssd": "Local-SSD",
     "rdma_routing": "RDMA+Routing",
+    "concur_rdma": "CONCUR+RDMA",
     "rdma_prefetch": "RDMA+Prefetch",
     "optical_naive": "Optical-Naive",
     "optical_reservation": "Optical-Resv.",
     "optikv": "OptiKV-Fabric",
     "eviction_s3fifo": "S3-FIFO",
+    "eviction_sieve": "SIEVE",
+    "eviction_rrevict": "RR-Evict",
     "eviction_belady": "Belady",
     "oracle_infinite_hbm": "Oracle",
 }
@@ -82,11 +86,14 @@ POLICY_COLOR = {
     "local_dram": C_DRAM,
     "local_ssd": C_SSD,
     "rdma_routing": C_RDMA,
+    "concur_rdma": C_CONCUR,
     "rdma_prefetch": C_RDMA_PF,
     "optical_naive": C_NAIVE,
     "optical_reservation": C_RESV,
     "optikv": C_OPTIKV,
     "eviction_s3fifo": "#7F7F7F",
+    "eviction_sieve": "#4E79A7",
+    "eviction_rrevict": "#F28E2B",
     "eviction_belady": "#A6761D",
     "oracle_infinite_hbm": C_ORACLE,
 }
@@ -199,9 +206,9 @@ def make_fig1_teaser() -> None:
             )
 
     box((0.15, 7.85), 4.15, 1.55, "Multi-Turn Agent Requests\n(Prefix Blocks &\nInter-Turn Gap)", "#EBF5FB", C_HBM, bold=True)
-    box((5.65, 7.85), 4.20, 1.55, "Causal Reuse Predictor\nAnchors + 2nd-Obs +\nGap Decay", "#FEF9E7", C_DRAM, bold=True)
+    box((5.65, 7.85), 4.20, 1.55, "Causal Reuse Predictor\nProbation Anchors +\n2nd-Obs + Gap Decay", "#FEF9E7", C_DRAM, bold=True)
     box((0.15, 4.75), 4.15, 2.05, "Optical-Aware Router\nStanding-Circuit Locality &\nSelective Recompute Abort", "#E8F8F5", C_OPTIKV, bold=True)
-    box((5.65, 4.75), 4.20, 2.05, "OCS Port Calendar\nStanding Circuit ($\\tau{=}0$) &\nWindowed Burst Prefetch", "#FDEDEC", C_NAIVE, bold=True)
+    box((5.65, 4.75), 4.20, 2.05, "OCS Port Calendar\nStanding Circuit ($\\tau{=}0$) &\nJIT Prefetch + In-Flight Join", "#FDEDEC", C_NAIVE, bold=True)
 
     # 5-Tier Memory Fabric at bottom
     tier_y = 0.45
@@ -567,8 +574,31 @@ def make_fig3_calibration() -> None:
     ax.axvspan(0.86, 0.98, color="#D1F2EB", alpha=0.55, label="3090 bare-metal $\\alpha$ (0.86–0.98)")
     ax.axvline(0.70, color="#555555", ls="--", lw=1.1)
     ax.text(0.68, 96.0, "Default\n$\\alpha{=}0.70$", ha="right", va="center", fontsize=7.0, color="#333333", fontweight="bold")
-    ax.annotate("4.56x vs RDMA\n1.45x vs Pref.", xy=(0.0, 40.8), xytext=(0.08, 86.0), arrowprops=dict(arrowstyle="-|>", color=C_OPTIKV, lw=1.2), fontsize=7.0, fontweight="bold", color="#00553D", bbox=dict(boxstyle="round,pad=0.22", fc="#E8F8F5", ec=C_OPTIKV, lw=0.8))
-    ax.annotate("3.15x", xy=(1.0, 36.3), xytext=(0.86, 78.0), arrowprops=dict(arrowstyle="-|>", color=C_OPTIKV, lw=1.1), fontsize=7.2, fontweight="bold", color="#00553D")
+    s0 = df_sens_ovl[np.isclose(df_sens_ovl["alpha_ovl"], 0.0)].set_index("policy")["p50_ttft_s"] * 1e3
+    s1 = df_sens_ovl[np.isclose(df_sens_ovl["alpha_ovl"], 1.0)].set_index("policy")["p50_ttft_s"] * 1e3
+    sp0_rdma = float(s0["rdma_routing"] / s0["optikv"])
+    sp0_pref = float(s0["rdma_prefetch"] / s0["optikv"])
+    sp1_rdma = float(s1["rdma_routing"] / s1["optikv"])
+    sp1_pref = float(s1["rdma_prefetch"] / s1["optikv"])
+    ax.annotate(
+        f"{sp0_rdma:.2f}x vs RDMA\n{sp0_pref:.2f}x vs Pref.",
+        xy=(0.0, float(s0["optikv"])),
+        xytext=(0.06, 98.0),
+        arrowprops=dict(arrowstyle="-|>", color=C_OPTIKV, lw=1.2),
+        fontsize=6.9,
+        fontweight="bold",
+        color="#00553D",
+        bbox=dict(boxstyle="round,pad=0.22", fc="#E8F8F5", ec=C_OPTIKV, lw=0.8),
+    )
+    ax.annotate(
+        f"{sp1_rdma:.2f}x / {sp1_pref:.2f}x",
+        xy=(1.0, float(s1["optikv"])),
+        xytext=(0.76, 86.0),
+        arrowprops=dict(arrowstyle="-|>", color=C_OPTIKV, lw=1.1),
+        fontsize=6.9,
+        fontweight="bold",
+        color="#00553D",
+    )
     ax.set_xlim(-0.04, 1.04)
     ax.set_ylim(15, 212)
     ax.set_xlabel("Compute-transfer overlap factor $\\alpha_{\\mathrm{ovl}}$")
@@ -591,7 +621,7 @@ def make_fig4_main_comparison() -> None:
         ("exp_main_freeinference_h100_mems.csv", "(c) FreeInference Long (25 sess, MEMS 25 ms)"),
         ("exp_main_mooncake_3090_calibrated.csv", "(d) Mooncake on RTX 3090 Calibrated (45 GB/s)"),
     ]
-    show = ["no_cache", "local_hbm", "local_dram", "rdma_routing", "rdma_prefetch", "optical_naive", "optical_reservation", "optikv", "oracle_infinite_hbm"]
+    show = ["no_cache", "local_hbm", "local_dram", "rdma_routing", "concur_rdma", "rdma_prefetch", "optical_naive", "optical_reservation", "optikv", "oracle_infinite_hbm"]
     fig, axes = plt.subplots(2, 2, figsize=(13.4, 8.3))
     for ax, (fname, title) in zip(axes.flat, panels):
         df = pd.read_csv(SIM / fname).set_index("policy")
@@ -762,7 +792,7 @@ def make_fig6_sensitivity() -> None:
     # --- Panel (d): Cited Fabric Power & Cost Efficiency on Real FreeInference (Goodput/W & Goodput/$1K) ---
     ax = axes[1, 1]
     df_fi = pd.read_csv(SIM / "exp_main_freeinference_h100_mems.csv").set_index("policy")
-    pols = ["rdma_routing", "rdma_prefetch", "optical_naive", "optical_reservation", "optikv"]
+    pols = ["rdma_routing", "concur_rdma", "rdma_prefetch", "optical_naive", "optical_reservation", "optikv"]
     pols = [p for p in pols if p in df_fi.index]
     x = np.arange(len(pols))
     w = 0.36
@@ -777,7 +807,15 @@ def make_fig6_sensitivity() -> None:
             if h > 0:
                 lbl = f"{h:.3f}" if h < 0.05 else f"{h:.2f}"
                 ax.text(rect.get_x() + rect.get_width() / 2, h * 1.18, lbl, ha="center", va="bottom", fontsize=7.2, fontweight="bold")
-    ax.set_xticks(x, [POLICY_LABEL[p] for p in pols])
+    short_d = {
+        "rdma_routing": "RDMA+\nRouting",
+        "concur_rdma": "CONCUR+\nRDMA",
+        "rdma_prefetch": "RDMA+\nPrefetch",
+        "optical_naive": "Optical-\nNaive",
+        "optical_reservation": "Optical-\nResv.",
+        "optikv": "OptiKV-\nFabric",
+    }
+    ax.set_xticks(x, [short_d.get(p, POLICY_LABEL[p]) for p in pols], fontsize=8.0)
     ax.set_ylim(max(1e-3, min(gpw + gpd) * 0.4), max(gpw + gpd) * 4.5)
     ax.set_ylabel("Efficiency on FreeInference (log scale)")
     ax.set_title("(d) Fabric Power & Cost Efficiency (FreeInference)")
@@ -829,23 +867,25 @@ def make_fig7_ablation() -> None:
     ax = axes[1]
     x = np.arange(len(df_ev))
     hits = df_ev["hit_rate"].values * 100.0
-    cols = [C_NOCACHE, C_DRAM, C_OPTIKV, C_ORACLE]
-    bars = ax.bar(x, hits, width=0.54, color=cols[: len(x)], edgecolor="#222222", lw=0.6)
-    ax.set_xticks(x, df_ev["eviction_label"], rotation=22, ha="right")
-    ax.set_ylim(0, min(108, max(hits) * 1.30))
+    cols = [C_NOCACHE, "#F28E2B", "#4E79A7", C_DRAM, C_OPTIKV, C_ORACLE]
+    if len(x) <= 4:
+        cols = [C_NOCACHE, C_DRAM, C_OPTIKV, C_ORACLE]
+    bars = ax.bar(x, hits, width=0.58, color=cols[: len(x)], edgecolor="#222222", lw=0.6)
+    ax.set_xticks(x, df_ev["eviction_label"], rotation=24, ha="right", fontsize=7.8)
+    ax.set_ylim(0, min(108, max(hits) * 1.32))
     ax.set_ylabel("Single-GPU HBM prefix hit rate (%)")
     ax.set_title("(b) Eviction Under 2 GiB HBM (LMCache)")
-    lru_h = float(hits[0]) if len(hits) else 0.0
+    lru_h = round(float(hits[0]), 2) if len(hits) else 0.0
     for idx_b, (rect, h) in enumerate(zip(bars, hits)):
-        delta = h - lru_h
-        sub_txt = "baseline" if idx_b == 0 else f"({delta:+.2f} pp)"
+        delta = round(float(h), 2) - lru_h
+        sub_txt = "base" if idx_b == 0 else f"({delta:+.2f})"
         ax.text(
             rect.get_x() + rect.get_width() / 2,
-            h + 0.8,
+            h + 0.7,
             f"{h:.2f}%\n{sub_txt}",
             ha="center",
             va="bottom",
-            fontsize=7.3,
+            fontsize=6.5,
             fontweight="bold",
         )
 
@@ -882,8 +922,8 @@ def make_fig7_ablation() -> None:
 def make_fig8_load() -> None:
     df = pd.read_csv(SIM / "exp_load_sweep.csv")
     fig, axes = plt.subplots(1, 2, figsize=(12.6, 4.7))
-    pols = ["no_cache", "local_hbm", "local_dram", "rdma_routing", "rdma_prefetch", "optical_naive", "optical_reservation", "optikv", "oracle_infinite_hbm"]
-    markers = {"no_cache": "x", "local_hbm": "v", "local_dram": "^", "rdma_routing": "s", "rdma_prefetch": "p", "optical_naive": "D", "optical_reservation": "P", "optikv": "o", "oracle_infinite_hbm": "*"}
+    pols = ["no_cache", "local_hbm", "local_dram", "rdma_routing", "concur_rdma", "rdma_prefetch", "optical_naive", "optical_reservation", "optikv", "oracle_infinite_hbm"]
+    markers = {"no_cache": "x", "local_hbm": "v", "local_dram": "^", "rdma_routing": "s", "concur_rdma": "h", "rdma_prefetch": "p", "optical_naive": "D", "optical_reservation": "P", "optikv": "o", "oracle_infinite_hbm": "*"}
 
     ax0, ax1 = axes
     for pol in pols:
@@ -913,6 +953,154 @@ def make_fig8_load() -> None:
     save_fig(fig, "fig8_p99_load")
 
 
+# ---------------------------------------------------------------------------
+# Figure 9: V3 Strict Physics Fidelity (Bipartite + Decode + WDM) & Multi-Node Scale-Out
+# ---------------------------------------------------------------------------
+
+def make_fig9_fidelity_and_scaling() -> None:
+    fid_path = SIM / "exp_v3_fidelity.csv"
+    scale_path = SIM / "exp_v3_cluster_scale.csv"
+    if not (fid_path.is_file() and scale_path.is_file()):
+        print("  skipping fig9 (waiting for exp_v3_fidelity.csv and exp_v3_cluster_scale.csv)", flush=True)
+        return
+
+    df_fid = pd.read_csv(fid_path)
+    df_sc = pd.read_csv(scale_path)
+    fig, axes = plt.subplots(2, 2, figsize=(12.8, 8.1))
+
+    # --- Panel (a): Strict Physics Fidelity on FreeInference-25 (P50 TTFT) ---
+    ax = axes[0, 0]
+    reg_order = ["base", "bipartite", "decode", "strict_full"]
+    reg_lbls = ["Base\n(Shared OCS)", "+Bipartite\nPort Cont.", "+Decode\nBatch Queue", "Strict Full\n(Bip.+Dec.)"]
+    sub_fi = df_fid[(df_fid["workload"] == "FreeInference-25") & (df_fid["fidelity_key"].isin(reg_order))]
+    x = np.arange(len(reg_order))
+    w = 0.20
+    show_p = [
+        ("rdma_routing", "RDMA+Routing", C_RDMA),
+        ("concur_rdma", "CONCUR+RDMA", C_CONCUR),
+        ("rdma_prefetch", "RDMA+Prefetch", C_RDMA_PF),
+        ("optikv", "OptiKV-Fabric", C_OPTIKV),
+    ]
+    for pi, (pol, lbl, col) in enumerate(show_p):
+        vals = []
+        for rk in reg_order:
+            m = sub_fi[(sub_fi["fidelity_key"] == rk) & (sub_fi["policy"] == pol)]
+            vals.append(float(m["p50_ttft_s"].iloc[0]) * 1e3 if len(m) else 0.0)
+        bars = ax.bar(x + (pi - 1.5) * w, vals, width=w, color=col, edgecolor="#222222", lw=0.5, label=lbl)
+        if pol == "optikv":
+            for rect, v in zip(bars, vals):
+                ax.text(rect.get_x() + rect.get_width() / 2, v + 2.0, f"{v:.1f}", ha="center", va="bottom", fontsize=7.2, fontweight="bold", color="#00553D")
+    ax.set_xticks(x, reg_lbls, fontsize=8.4)
+    ax.set_ylim(0, 122)
+    ax.set_ylabel("FreeInference P50 TTFT (ms)")
+    ax.set_title("(a) Strict Physics Fidelity Stress (FreeInference-25)")
+    ax.legend(loc="upper right", fontsize=7.5, ncol=2, framealpha=0.92)
+
+    # --- Panel (b): WDM Multi-Wavelength Striping Under Strict Physics ---
+    ax = axes[0, 1]
+    wdm_keys = ["strict_full", "strict_wdm2", "strict_wdm4"]
+    wdm_lbls = ["1-Wavelength\n(Strict 200 GB/s)", "WDM 2x\n(400 GB/s)", "WDM 4x\n(800 GB/s)"]
+    wloads = [
+        ("LMCache-120", "LMCache-120", C_HBM, "o"),
+        ("FreeInference-25", "FreeInference-25", C_OPTIKV, "s"),
+        ("128K-Bimodal", "128K-Bimodal", C_DRAM, "^"),
+    ]
+    ax_r = ax.twinx()
+    ax_r.spines["top"].set_visible(False)
+    ax_r.grid(False)
+    xw = np.arange(len(wdm_keys))
+    lns = []
+    for wl, lbl, col, mk in wloads:
+        t_vals, d_vals = [], []
+        for rk in wdm_keys:
+            m = df_fid[(df_fid["workload"] == wl) & (df_fid["fidelity_key"] == rk) & (df_fid["policy"] == "optikv")]
+            t_vals.append(float(m["mean_transfer_s"].iloc[0]) * 1e3 if len(m) else 0.0)
+            d_vals.append(float(m["ocs_duty_cycle"].iloc[0]) * 100.0 if len(m) else 0.0)
+        lns += ax.plot(xw, t_vals, color=col, marker=mk, ms=6.0, lw=2.2, label=f"{lbl}")
+        ax_r.plot(xw, d_vals, color=col, marker=mk, ms=4.5, lw=1.4, ls="--", alpha=0.75)
+    ax.set_xticks(xw, wdm_lbls, fontsize=8.4)
+    ax.set_ylim(0, 21.5)
+    ax.set_ylabel("Mean critical-path transfer (ms)")
+    ax_r.set_ylabel("Strict bipartite OCS duty cycle (%)")
+    ax_r.set_ylim(0, 112)
+    ax.set_title("(b) WDM Striping Under Bipartite + Decode Physics")
+    ax.legend(lns, [l.get_label() for l in lns], loc="upper right", fontsize=7.5, framealpha=0.92)
+    ax.text(0.03, 0.07, "Solid: Mean Xfer (ms)\nDashed: OCS Duty (%)", transform=ax.transAxes, fontsize=7.4, bbox=dict(boxstyle="round,pad=0.25", fc="white", ec="#888888", alpha=0.92))
+
+    # --- Panel (c): Multi-Node Weak Scaling (W=4..32 GPUs, 4:1 Port Ratio, Strict Bipartite + Decode) ---
+    ax = axes[1, 0]
+    sub_wk = df_sc[df_sc["sweep_type"] == "weak_scale"]
+    w_order = [4, 8, 16, 32]
+    xw_pos = np.arange(len(w_order))
+    scale_specs = [
+        ("oracle_infinite_hbm", "Oracle (Bound)", C_ORACLE, "*", "--", 1.8),
+        ("optikv", "OptiKV-Fabric (Ours)", C_OPTIKV, "o", "-", 2.6),
+        ("rdma_prefetch", "RDMA+Prefetch", C_RDMA_PF, "p", "-", 1.7),
+        ("rdma_routing", "RDMA+Routing", C_RDMA, "s", "-", 1.7),
+        ("concur_rdma", "CONCUR+RDMA", C_CONCUR, "h", ":", 1.6),
+        ("optical_naive", "Optical-Naive", C_NAIVE, "D", "-", 1.5),
+    ]
+    for pol, lbl, col, mk, ls, lw in scale_specs:
+        ys = []
+        for wv in w_order:
+            m = sub_wk[(sub_wk["workers"] == wv) & (sub_wk["policy"] == pol)]
+            ys.append(float(m["goodput_rps"].iloc[0]) if len(m) else 0.0)
+        ax.plot(xw_pos, ys, color=col, marker=mk, ms=6.0 if pol != "oracle_infinite_hbm" else 7.5, lw=lw, ls=ls, label=lbl)
+        if pol == "optikv":
+            for xi, yv in zip(xw_pos, ys):
+                ax.text(xi, yv + 0.55, f"{yv:.2f}", ha="center", va="bottom", fontsize=7.5, fontweight="bold", color="#00553D")
+        elif pol == "rdma_routing":
+            ax.text(xw_pos[-1] - 0.08, ys[-1] + 0.45, f"RDMA: {ys[-1]:.2f}\n(6.43x gap)", ha="right", va="bottom", fontsize=7.2, fontweight="bold", color=C_RDMA)
+    ax.set_xticks(xw_pos, ["4 GPUs\n(P=1)", "8 GPUs\n(P=2, 1 Node)", "16 GPUs\n(P=4, 2 Nodes)", "32 GPUs\n(P=8, 4 Nodes)"], fontsize=8.2)
+    ax.set_ylim(-0.5, 14.8)
+    ax.set_ylabel("SLO-attaining goodput (req/s, 250 ms SLO)")
+    ax.set_title("(c) Multi-Node Weak Scaling (Strict Bipartite + Decode, 4:1)")
+    ax.legend(loc="upper left", fontsize=7.3, ncol=2, framealpha=0.92)
+
+    # --- Panel (d): Port-Oversubscription Phase Transition at W=16 GPUs (64 req/s Burst) ---
+    ax = axes[1, 1]
+    sub_pr = df_sc[df_sc["sweep_type"] == "port_ratio_w16"]
+    p_order = [1, 2, 4, 8]
+    xp = np.arange(len(p_order))
+    opt_p50 = [float(sub_pr[(sub_pr["ocs_ports"] == pv) & (sub_pr["policy"] == "optikv")]["p50_ttft_s"].iloc[0]) * 1e3 for pv in p_order]
+    opt_gp = [float(sub_pr[(sub_pr["ocs_ports"] == pv) & (sub_pr["policy"] == "optikv")]["goodput_rps"].iloc[0]) for pv in p_order]
+    rdma_p50 = float(sub_pr[(sub_pr["ocs_ports"] == 4) & (sub_pr["policy"] == "rdma_routing")]["p50_ttft_s"].iloc[0]) * 1e3
+    rdma_gp = float(sub_pr[(sub_pr["ocs_ports"] == 4) & (sub_pr["policy"] == "rdma_routing")]["goodput_rps"].iloc[0])
+
+    bar_cols = ["#D55E00", "#E69F00", C_OPTIKV, C_OPTIKV]
+    bars = ax.bar(xp - 0.18, opt_p50, width=0.34, color=bar_cols, edgecolor="#222222", lw=0.6, label="OptiKV P50 TTFT (ms)")
+    ax.axhline(250.0, color="#880000", ls=":", lw=1.4, label="250 ms TTFT SLO")
+    ax.axhline(rdma_p50, color=C_RDMA, ls="--", lw=1.3, label=f"RDMA+Rout P50 ({rdma_p50:.0f} ms)")
+    ax.set_yscale("log")
+    ax.set_ylim(20, 32000)
+    for rect, v in zip(bars, opt_p50):
+        ax.text(rect.get_x() + rect.get_width() / 2, v * 1.18, f"{v:.0f}" if v >= 100 else f"{v:.1f}", ha="center", va="bottom", fontsize=7.3, fontweight="bold")
+
+    ax_gp = ax.twinx()
+    ax_gp.spines["top"].set_visible(False)
+    ax_gp.grid(False)
+    ax_gp.plot(xp + 0.18, opt_gp, color="#004C97", marker="o", ms=6.2, lw=2.2, label="OptiKV Goodput (req/s)")
+    ax_gp.axhline(rdma_gp, color="#004C97", ls="-.", lw=1.2, alpha=0.70, label=f"RDMA+Rout Goodput ({rdma_gp:.2f})")
+    for idx_g, (xi, gv) in enumerate(zip(xp + 0.18, opt_gp)):
+        if idx_g == 1:
+            ax_gp.text(xi + 0.10, gv - 0.15, f"{gv:.2f}", ha="left", va="top", fontsize=7.3, fontweight="bold", color="#004C97")
+        else:
+            ax_gp.text(xi, gv + 0.35, f"{gv:.2f}", ha="center", va="bottom", fontsize=7.3, fontweight="bold", color="#004C97")
+    ax_gp.set_ylim(0, 12.2)
+    ax_gp.set_ylabel("SLO Goodput (req/s)", color="#004C97")
+    ax_gp.tick_params(axis="y", colors="#004C97")
+
+    ax.set_xticks(xp, ["P=1\n(16:1)", "P=2\n(8:1)", "P=4\n(4:1 Knee)", "P=8\n(2:1)"], fontsize=8.3)
+    ax.set_ylabel("Median (P50) TTFT (ms, log)")
+    ax.set_title("(d) W=16 OCS Port-Oversubscription Knee (64 req/s Burst)")
+    h1, l1 = ax.get_legend_handles_labels()
+    h2, l2 = ax_gp.get_legend_handles_labels()
+    ax.legend(h1 + h2, l1 + l2, loc="upper right", fontsize=6.6, ncol=1, framealpha=0.94)
+
+    fig.tight_layout()
+    save_fig(fig, "fig9_fidelity_and_scaling")
+
+
 def main() -> int:
     print("Generating publication-grade figures (PDF + 300-DPI PNG)...", flush=True)
     make_fig1_teaser()
@@ -923,7 +1111,8 @@ def main() -> int:
     make_fig6_sensitivity()
     make_fig7_ablation()
     make_fig8_load()
-    print("All 8 publication figures generated cleanly.", flush=True)
+    make_fig9_fidelity_and_scaling()
+    print("All publication figures generated cleanly.", flush=True)
     return 0
 
 

@@ -186,7 +186,7 @@ def main() -> int:
     cpu_ovh = benchmark_scheduler_cpu_overhead()
     print(f"[2/4] Control-Plane Sim Cost (pure Python): OptiKV={cpu_ovh['optikv_per_req_ms']} ms/req ({cpu_ovh['optikv_req_per_s_python']} req/s) vs RDMA={cpu_ovh['rdma_per_req_ms']} ms/req", flush=True)
 
-    cv_pols = ["local_dram", "rdma_routing", "rdma_prefetch", "optical_naive", "optical_reservation", "optikv", "oracle_infinite_hbm"]
+    cv_pols = ["local_dram", "rdma_routing", "concur_rdma", "rdma_prefetch", "optical_naive", "optical_reservation", "optikv", "oracle_infinite_hbm"]
     cl_lm = make_cluster(workers=8, hbm_gib=4.0, dram_gib=64.0, ssd_gib=256.0, pool_gib=256.0, rdma_bw=25.0, ocs_bw=200.0, tau_us=25000.0, links=2)
     cl_fi = make_cluster(workers=8, hbm_gib=8.0, dram_gib=64.0, ssd_gib=256.0, pool_gib=256.0, rdma_bw=25.0, ocs_bw=200.0, tau_us=25000.0, links=2)
 

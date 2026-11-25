@@ -330,9 +330,122 @@ def test_single_gpu_belady_dominates_online_evictors():
     cl["dram_bytes_per_worker"] = 0
     cl["ssd_bytes_per_worker"] = 0
     cl["rdma_pool_bytes"] = 0
-    res = _run(["local_hbm", "eviction_s3fifo", "eviction_gdsf", "eviction_belady"], trace=trace, cluster=cl)
+    res = _run(
+        ["local_hbm", "eviction_s3fifo", "eviction_sieve", "eviction_rrevict", "eviction_gdsf", "eviction_belady"],
+        trace=trace,
+        cluster=cl,
+    )
     by_pol = {r["policy"]: r["hbm_hit_rate"] for r in res.summary_rows}
     assert by_pol["eviction_belady"] >= by_pol["local_hbm"] - 1e-9
     assert by_pol["eviction_belady"] >= by_pol["eviction_s3fifo"] - 1e-9
+    assert by_pol["eviction_belady"] >= by_pol["eviction_sieve"] - 1e-9
+    assert by_pol["eviction_belady"] >= by_pol["eviction_rrevict"] - 1e-9
     assert by_pol["eviction_belady"] >= by_pol["eviction_gdsf"] - 1e-9
     assert by_pol["eviction_s3fifo"] > 0.0
+    assert by_pol["eviction_sieve"] > 0.0
+    assert by_pol["eviction_rrevict"] > 0.0
+
+
+def test_bipartite_port_contention_and_wdm_striping():
+    # Single-wavelength vs 2-wavelength WDM striping
+    cal_1w = OpticalCalendar(2, reconfig_s=0.025, bandwidth_B_s=100e9, latency_s=0.0, num_workers=4, wdm_wavelengths=1)
+    cal_2w = OpticalCalendar(2, reconfig_s=0.025, bandwidth_B_s=100e9, latency_s=0.0, num_workers=4, wdm_wavelengths=2)
+    p1 = cal_1w.transfer_sequence(0.0, [(-1, 200_000_000)], commit=True)[0]
+    p2 = cal_2w.transfer_sequence(0.0, [(-1, 200_000_000)], commit=True)[0]
+    assert abs(p1.transfer_s - 2.0 * p2.transfer_s) < 1e-12
+
+    # Strict bipartite mode serializes two simultaneous fetches from the same src_worker
+    cal_bi = OpticalCalendar(
+        2, reconfig_s=0.025, bandwidth_B_s=100e9, latency_s=0.0, num_workers=4, bipartite_port_contention=True
+    )
+    a = cal_bi.transfer_sequence(0.0, [(-1, 1_000_000_000)], commit=True, src_worker=0)[0]
+    b = cal_bi.transfer_sequence(0.0, [(-1, 1_000_000_000)], commit=True, src_worker=0)[0]
+    assert b.start_s >= a.end_s - 1e-12
+
+
+def test_parallel_multiport_transfer_sequence():
+    cal = OpticalCalendar(2, reconfig_s=0.0, bandwidth_B_s=100e9, latency_s=0.0, num_workers=4)
+    plans = cal.transfer_sequence(0.0, [(1, 100_000_000), (2, 100_000_000)], commit=True)
+    assert len(plans) == 2
+    assert plans[0].start_s == 0.0 and plans[1].start_s == 0.0
+    assert plans[0].port_index != plans[1].port_index
+
+
+def test_inflight_prefetch_join_is_strictly_causal():
+    # Two sessions alternate on 1 worker with small HBM (1 session capacity);
+    # Turn 1 arrives early while async prefetch from Optical Pool is still in flight.
+    spec = load_model("qwen2.5-7b-instruct")
+    bt = 512
+    bb = bt * spec.kv_bytes_per_token(2)
+    s0 = tuple(BlockRef(f"s0-{i}", bt) for i in range(8))
+    s1 = tuple(BlockRef(f"s1-{i}", bt) for i in range(8))
+    trace = Trace(
+        name="inflight-join",
+        kind="synthetic",
+        block_tokens=bt,
+        requests=[
+            Request("r0", 0.0, "s0", 0, 0.0, s0, assigned_worker=0),
+            Request("r1", 2.0, "s1", 0, 0.0, s1, assigned_worker=0),
+            # r2 arrives 10ms after r0 would finish if it were right after r1: force very short gap
+            Request("r2", 4.01, "s0", 1, 0.01, s0 + (BlockRef("s0-u", bt),), assigned_worker=0),
+        ],
+    )
+    cl = _cluster(reconfig_us=25_000.0, hbm=bb * 8)
+    cl["num_workers"] = 1
+    res = _run(["optikv", "oracle_infinite_hbm"], trace=trace, cluster=cl)
+    by_pol = {r["policy"]: r for r in res.summary_rows}
+    assert by_pol["optikv"]["mean_ttft_s"] >= by_pol["oracle_infinite_hbm"]["mean_ttft_s"] - 1e-9
+    assert by_pol["optikv"]["pinned_evictions"] == 0
+
+
+def test_decode_coupled_queue_monotonicity():
+    cl_base = _cluster()
+    cl_dec = _cluster()
+    cl_dec["couple_decode_queue"] = True
+    cl_dec["decode_batch_slots"] = 4
+    trace = Trace(
+        name="decode-couple",
+        kind="synthetic",
+        block_tokens=256,
+        requests=[
+            Request(f"r{i}", i * 0.01, f"s{i}", 0, 0.0, (BlockRef(f"b{i}", 256),), output_tokens=64)
+            for i in range(8)
+        ],
+    )
+    res_base = _run(["optikv"], trace=trace, cluster=cl_base)
+    res_dec = _run(["optikv", "oracle_infinite_hbm"], trace=trace, cluster=cl_dec)
+    dec_by = {r["policy"]: r for r in res_dec.summary_rows}
+    assert dec_by["optikv"]["mean_ttft_s"] >= res_base.summary_rows[0]["mean_ttft_s"] - 1e-9
+    assert dec_by["optikv"]["mean_ttft_s"] >= dec_by["oracle_infinite_hbm"]["mean_ttft_s"] - 1e-9
+
+
+def test_concur_admission_control_respects_oracle():
+    res = _run(["concur_rdma", "oracle_infinite_hbm"])
+    by_pol = {r["policy"]: r for r in res.summary_rows}
+    assert by_pol["concur_rdma"]["mean_ttft_s"] >= by_pol["oracle_infinite_hbm"]["mean_ttft_s"] - 1e-9
+    assert by_pol["concur_rdma"]["pinned_evictions"] == 0
+
+
+def test_queue_aware_dram_co_steering():
+    # When OCS is queued beyond DRAM transfer time, OptiKV uses local DRAM rather than stalling on OCS
+    spec = load_model("qwen2.5-7b-instruct")
+    bt = 512
+    bb = bt * spec.kv_bytes_per_token(2)
+    s0 = tuple(BlockRef(f"q0-{i}", bt) for i in range(4))
+    s1 = tuple(BlockRef(f"q1-{i}", bt) for i in range(4))
+    trace = Trace(
+        name="dram-fallback",
+        kind="synthetic",
+        block_tokens=bt,
+        requests=[
+            Request("r0", 0.0, "s0", 0, 0.0, s0, assigned_worker=0),
+            Request("r1", 2.0, "s1", 0, 0.0, s1, assigned_worker=0),
+            Request("r2", 4.0, "s0", 1, 0.0, s0 + (BlockRef("q0-n", bt),), assigned_worker=0),
+        ],
+    )
+    cl = _cluster(reconfig_us=50_000.0, hbm=bb * 4)
+    cl["num_workers"] = 1
+    cl["dram_bandwidth_gb_s"] = 50.0
+    cl["ocs"]["bandwidth_gb_s"] = 100.0
+    res = _run(["optikv"], trace=trace, cluster=cl, optikv={"enable_prefetch": False})
+    assert res.summary_rows[0]["dram_hit_rate"] > 0.0

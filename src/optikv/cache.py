@@ -40,6 +40,9 @@ class Entry:
     freq: int = 0
     queue_name: str = "S"
     insert_seq: int = 0
+    session_id: str = ""
+    block_pos: int = 0
+    ready_at_s: float = 0.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -161,6 +164,9 @@ class CacheStore:
         pin: bool,
         evict_score: float | None = None,
         auto_trim: bool = True,
+        session_id: str = "",
+        block_pos: int = 0,
+        ready_at_s: float = 0.0,
     ) -> Entry:
         key = (tier, worker)
         row = self.rows[key]
@@ -173,6 +179,13 @@ class CacheStore:
             entry.reuse_score = score
             entry.evict_score = eff_evict
             entry.freq = min(3, entry.freq + 1)
+            if session_id and not entry.session_id:
+                entry.session_id = session_id
+            if ready_at_s > entry.ready_at_s:
+                entry.ready_at_s = ready_at_s
+            elif ready_at_s == 0.0 and pin:
+                # Newly computed/materialized block is immediately ready at `now`
+                entry.ready_at_s = min(entry.ready_at_s, now)
             if pin:
                 entry.pin_count += 1
             if _is_lru(evictor):
@@ -191,6 +204,9 @@ class CacheStore:
             last_access_s=now,
             reuse_score=score,
             evict_score=eff_evict,
+            session_id=session_id,
+            block_pos=int(block_pos),
+            ready_at_s=float(ready_at_s),
         )
         on_admit = getattr(evictor, "on_admit", None)
         if on_admit is not None:
@@ -316,6 +332,31 @@ class CacheStore:
         keyfn = _order_key(evictor)
         if keyfn is not None:
             self._compact(key, evictor)
+        # Fast batch path for RR-Evict (single O(N) grouping per trim call)
+        choose_batch = getattr(evictor, "choose_batch", None)
+        if keyfn is None and choose_batch is not None:
+            victims = choose_batch(self.rows[key], self.used[key] - cap)
+            for v in victims:
+                if v.pin_count > 0:
+                    self.pinned_evictions += 1
+                    break
+                self._drop(v)
+                evicted.append(v)
+            return evicted
+        # Fast direct-row scan for SIEVE (exploits FIFO OrderedDict without copying list)
+        choose_row = getattr(evictor, "choose_from_row", None)
+        if keyfn is None and choose_row is not None:
+            row = self.rows[key]
+            while self.used[key] > cap:
+                v = choose_row(row)
+                if v is None:
+                    break
+                if v.pin_count > 0:
+                    self.pinned_evictions += 1
+                    break
+                self._drop(v)
+                evicted.append(v)
+            return evicted
         spins = 0
         promotes = 0
         while self.used[key] > cap:

@@ -22,7 +22,7 @@ DEFAULTS = {
     "enable_eviction": True,
     "prefetch_utilization_cap": 0.75,
     "anchor_prefix_blocks": 4,
-    "recency_tau_s": 600.0,
+    "recency_tau_s": 300.0,
     "tier_hbm_min_p": 0.5,
     "tier_dram_min_p": 0.25,
     "tier_ssd_min_p": 0.08,

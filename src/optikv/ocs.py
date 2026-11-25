@@ -4,6 +4,9 @@ OCS physics:
 - A standing circuit to the same target pays tau = 0.
 - Switching a port to a different target pays the configured reconfiguration delay tau.
 - Concurrent optical links per fabric pool must be in {1, 2, 4, 8}.
+- Supports parallel multi-port execution across distinct targets, optional strict
+  bipartite source-destination transceiver port contention, and WDM multi-wavelength
+  striping (W in {1, 2, 4}) across optical links.
 - Tracks active transfer time and reconfiguration dead time to compute OCS duty cycle.
 
 Electrical NIC physics:
@@ -44,22 +47,34 @@ class OpticalCalendar:
         reconfig_s: float,
         bandwidth_B_s: float,
         latency_s: float,
+        *,
+        num_workers: int = 8,
+        bipartite_port_contention: bool = False,
+        wdm_wavelengths: int = 1,
     ) -> None:
         if num_ports not in (1, 2, 4, 8):
             raise ValueError(f"concurrent links must be in {{1, 2, 4, 8}}, got {num_ports}")
+        if wdm_wavelengths < 1:
+            raise ValueError(f"wdm_wavelengths must be >= 1, got {wdm_wavelengths}")
         self.reconfig_s = float(reconfig_s)
         self.bandwidth_B_s = float(bandwidth_B_s)
         self.latency_s = float(latency_s)
         self.ports = [Port() for _ in range(num_ports)]
+        self.num_workers = int(max(1, num_workers))
+        self.bipartite_port_contention = bool(bipartite_port_contention)
+        self.wdm_wavelengths = int(wdm_wavelengths)
+        # Per-worker optical transceiver state (used when bipartite_port_contention=True)
+        self.worker_ports = [Port() for _ in range(self.num_workers)]
         self.total_active_s: float = 0.0
         self.total_reconfig_s: float = 0.0
         self.total_transfers: int = 0
         self.standing_hits: int = 0
 
-    def transfer_time(self, nbytes: int) -> float:
+    def transfer_time(self, nbytes: int, wavelengths: int = 1) -> float:
         if nbytes <= 0 or self.bandwidth_B_s == float("inf"):
             return 0.0
-        return self.latency_s + nbytes / self.bandwidth_B_s
+        eff_bw = self.bandwidth_B_s * max(1, wavelengths)
+        return self.latency_s + nbytes / eff_bw
 
     @property
     def duty_cycle(self) -> float:
@@ -68,15 +83,24 @@ class OpticalCalendar:
             return 0.0
         return self.total_active_s / denom
 
-    def min_wait_s(self, now: float) -> float:
-        return min(max(0.0, port.free_at - now) for port in self.ports)
+    def min_wait_s(self, now: float, src_worker: int | None = None) -> float:
+        pool_wait = min(max(0.0, port.free_at - now) for port in self.ports)
+        if self.bipartite_port_contention and src_worker is not None and 0 <= src_worker < self.num_workers:
+            w_wait = max(0.0, self.worker_ports[src_worker].free_at - now)
+            return max(pool_wait, w_wait)
+        return pool_wait
 
-    def active_targets(self) -> set[int]:
-        return {port.target for port in self.ports if port.target is not None}
+    def active_targets(self, src_worker: int | None = None) -> set[int]:
+        pool_targets = {port.target for port in self.ports if port.target is not None}
+        if self.bipartite_port_contention and src_worker is not None and 0 <= src_worker < self.num_workers:
+            wt = self.worker_ports[src_worker].target
+            return {wt} if (wt is not None and wt in pool_targets) else set()
+        return pool_targets
 
     def snapshot(self):
         return (
             [(port.free_at, port.target) for port in self.ports],
+            [(port.free_at, port.target) for port in self.worker_ports],
             self.total_active_s,
             self.total_reconfig_s,
             self.total_transfers,
@@ -84,8 +108,11 @@ class OpticalCalendar:
         )
 
     def restore(self, snap) -> None:
-        port_state, act, rec, xfers, hits = snap
+        port_state, worker_state, act, rec, xfers, hits = snap
         for port, (free_at, target) in zip(self.ports, port_state):
+            port.free_at = free_at
+            port.target = target
+        for port, (free_at, target) in zip(self.worker_ports, worker_state):
             port.free_at = free_at
             port.target = target
         self.total_active_s = act
@@ -93,12 +120,33 @@ class OpticalCalendar:
         self.total_transfers = xfers
         self.standing_hits = hits
 
-    def _one(self, now: float, target: int, nbytes: int) -> TransferPlan:
-        xfer = self.transfer_time(nbytes)
+    def _one(self, now: float, target: int, nbytes: int, src_worker: int | None = None) -> TransferPlan:
+        # WDM multi-wavelength striping scales effective burst bandwidth up to wdm_wavelengths
+        # over a single fiber pair (Yoon & Yu 2026 WDM + MEMS model)
+        xfer = self.transfer_time(nbytes, wavelengths=self.wdm_wavelengths)
+        w_port = (
+            self.worker_ports[src_worker]
+            if (self.bipartite_port_contention and src_worker is not None and 0 <= src_worker < self.num_workers)
+            else None
+        )
+        # In bipartite mode, if target is another worker's HBM (target >= 0), its transceiver also contends
+        dst_w_port = (
+            self.worker_ports[target]
+            if (self.bipartite_port_contention and 0 <= target < self.num_workers)
+            else None
+        )
         best: tuple[float, int, float, float, bool] | None = None
         for index, port in enumerate(self.ports):
             start = max(now, port.free_at)
-            is_standing = port.target == target
+            if w_port is not None:
+                start = max(start, w_port.free_at)
+            if dst_w_port is not None:
+                start = max(start, dst_w_port.free_at)
+            pool_standing = port.target == target
+            if w_port is not None:
+                is_standing = pool_standing and (w_port.target == target)
+            else:
+                is_standing = pool_standing
             tau = 0.0 if is_standing else self.reconfig_s
             end = start + tau + xfer
             cand = (end, index, start, tau, is_standing)
@@ -109,6 +157,11 @@ class OpticalCalendar:
         port = self.ports[index]
         port.free_at = end
         port.target = target
+        if w_port is not None:
+            w_port.free_at = end
+            w_port.target = target
+        if dst_w_port is not None:
+            dst_w_port.free_at = end
         self.total_active_s += xfer
         self.total_reconfig_s += tau
         self.total_transfers += 1
@@ -129,17 +182,23 @@ class OpticalCalendar:
         now: float,
         segments: list[tuple[int, int]],
         commit: bool,
+        *,
+        src_worker: int | None = None,
+        parallel: bool = True,
     ) -> list[TransferPlan]:
-        """Move each (target, nbytes) segment in order. Restore state if commit is false."""
+        """Move each (target, nbytes) segment. Uses parallel multi-port dispatch when multiple
+        optical ports are available and bipartite single-port serialization does not bind."""
         snap = self.snapshot()
         plans: list[TransferPlan] = []
         cursor = now
+        use_parallel = parallel and len(self.ports) > 1 and (not self.bipartite_port_contention)
         for target, nbytes in segments:
             if nbytes <= 0:
                 continue
-            plan = self._one(cursor, target, nbytes)
+            dispatch_t = now if use_parallel else cursor
+            plan = self._one(dispatch_t, target, nbytes, src_worker=src_worker)
             plans.append(plan)
-            cursor = plan.end_s
+            cursor = max(cursor, plan.end_s)
         if not commit:
             self.restore(snap)
         return plans
@@ -158,6 +217,9 @@ class ElectricalNICCalendar:
         if nbytes <= 0 or self.bandwidth_B_s == float("inf"):
             return 0.0
         return self.latency_s + nbytes / self.bandwidth_B_s
+
+    def min_wait_s(self, now: float, worker: int) -> float:
+        return max(0.0, self.free_at[worker] - now)
 
     def transfer(self, now: float, worker: int, nbytes: int, commit: bool) -> float:
         """Return total elapsed time from `now` until transfer completes on worker's NIC."""

@@ -265,13 +265,14 @@ def main() -> int:
         ]
         f_real = {}
         for fname, hw, cl, slo, tkey in real_specs:
-            for pol in ("rdma_prefetch", "optikv"):
+            for pol in ("concur_rdma", "rdma_prefetch", "optikv"):
                 cfg = {"model": "qwen2.5-7b-instruct-1m", "hardware_profile": hw, "cluster": cl, "policies": [pol], "slo_ttft_s": slo, "seed": 0}
                 f_real[pool.submit(_run_real_trace_job, {"config": cfg, "trace_key": tkey})] = (fname, pol)
         for fut in as_completed(f_real):
             fname, pol = f_real[fut]
             row = fut.result()["rows"][0]
-            _patch_policy_row(SIM / fname, row, after_policy="rdma_routing" if pol == "rdma_prefetch" else None)
+            after_p = "rdma_routing" if pol in ("concur_rdma", "rdma_prefetch") else None
+            _patch_policy_row(SIM / fname, row, after_policy=after_p)
             print(f"  {fname:40s} [{pol:13s}]: p50={row['p50_ttft_s']*1e3:6.1f}ms p99={row['p99_ttft_s']*1e3:7.1f}ms hbm={row['hbm_hit_rate']*100:5.1f}% pf={row['prefetch_bursts']:4d} duty={row['ocs_duty_cycle']*100:4.1f}%", flush=True)
         print(f"  All 6 real-trace OptiKV & RDMA+Prefetch rows refreshed in {time.perf_counter()-t0:.1f}s", flush=True)
 
@@ -288,7 +289,7 @@ def main() -> int:
             workers=8,
         )
         cl_128k = make_cluster(workers=8, hbm_gib=10.0, dram_gib=16.0, pool_gib=512.0, ocs_bw=200.0, tau_us=25000.0, rdma_bw=25.0, links=2)
-        pols_t = ["no_cache", "local_hbm", "local_dram", "rdma_routing", "rdma_prefetch", "optical_naive", "optical_reservation", "optikv", "oracle_infinite_hbm"]
+        pols_t = ["no_cache", "local_hbm", "local_dram", "rdma_routing", "concur_rdma", "rdma_prefetch", "optical_naive", "optical_reservation", "optikv", "oracle_infinite_hbm"]
         f_t = [
             pool.submit(_run_one_job, {"config": {"model": "qwen2.5-7b-instruct-1m", "hardware_profile": "h100_peak_spec", "cluster": cl_128k, "policies": [p], "slo_ttft_s": 0.25, "seed": 0}, "trace": tr_128k, "meta": {"order": i}})
             for i, p in enumerate(pols_t)
@@ -452,8 +453,10 @@ def main() -> int:
         cl_ev = make_cluster(workers=1, hbm_gib=2.0, dram_gib=0.0, ssd_gib=0.0, pool_gib=0.0, ocs_bw=200.0, tau_us=25000.0, rdma_bw=25.0)
         ev_specs = [
             ("LRU (Local-HBM)", "local_hbm"),
-            ("S3-FIFO", "eviction_s3fifo"),
-            ("OptiKV-GDSF (HBM)", "eviction_gdsf"),
+            ("RR-Evict ('26)", "eviction_rrevict"),
+            ("SIEVE ('24)", "eviction_sieve"),
+            ("S3-FIFO ('23)", "eviction_s3fifo"),
+            ("Prefix-GDSF (Ours)", "eviction_gdsf"),
             ("Belady (Optimal)", "eviction_belady"),
         ]
         f_ev = [
@@ -482,7 +485,7 @@ def main() -> int:
         print("\n[5/6] Running Steady-State Load Sweep (1 .. 32 req/s, SLO=250ms)...", flush=True)
         t0 = time.perf_counter()
         rates = [1.0, 2.0, 4.0, 6.0, 8.0, 12.0, 16.0, 24.0, 32.0]
-        l_pols = ["no_cache", "local_hbm", "local_dram", "rdma_routing", "rdma_prefetch", "optical_naive", "optical_reservation", "optikv", "oracle_infinite_hbm"]
+        l_pols = ["no_cache", "local_hbm", "local_dram", "rdma_routing", "concur_rdma", "rdma_prefetch", "optical_naive", "optical_reservation", "optikv", "oracle_infinite_hbm"]
         f_ld = []
         for rps in rates:
             tr_l = make_agentic_closedloop(

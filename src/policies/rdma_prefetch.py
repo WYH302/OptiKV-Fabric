@@ -22,5 +22,5 @@ SPEC = PolicySpec(
     eviction="reuse",
     prefetch_utilization_cap=0.75,
     anchor_prefix_blocks=4,
-    recency_tau_s=600.0,
+    recency_tau_s=300.0,
 )

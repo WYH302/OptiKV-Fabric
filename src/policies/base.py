@@ -23,12 +23,13 @@ class PolicySpec:
     store: bool = True
     oracle: bool = False
     book_at_arrival: bool = False
-    prefetch_utilization_cap: float = 0.75
-    anchor_prefix_blocks: int = 2
+    prefetch_utilization_cap: float = 0.65
+    anchor_prefix_blocks: int = 4
     recency_tau_s: float = 600.0
     tier_hbm_min_p: float = 0.5
     tier_dram_min_p: float = 0.25
     tier_ssd_min_p: float = 0.08
+    admission_control: bool = False
 
     @property
     def enable_eviction(self) -> bool:
