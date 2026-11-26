@@ -1116,6 +1116,14 @@ def make_fig10_live_3090_hil_replay() -> None:
     df_req = pd.read_csv(req_path)
     fig, axes = plt.subplots(1, 2, figsize=(12.6, 4.65))
 
+    n_sess = int(df_req["session"].nunique()) if "session" in df_req.columns else 12
+    concur_mode_str = str(df_e2e[df_e2e["mode"].str.contains("CONCUR")]["mode"].iloc[0])
+    import re
+    m_w = re.search(r"W=(\d+)", concur_mode_str)
+    w_sz = int(m_w.group(1)) if m_w else (n_sess // 2)
+    working_gib = n_sess * 8192 * 57344 / (1024**3)
+    pool_gib = float(df_e2e["kv_pool_gib"].iloc[0]) if "kv_pool_gib" in df_e2e.columns else 3.01
+
     # --- Panel (a): Live RTX 3090 vLLM 0.34.0 Reuse P50 & P95 TTFT ---
     ax = axes[0]
     x_e = np.arange(len(df_e2e))
@@ -1124,7 +1132,7 @@ def make_fig10_live_3090_hil_replay() -> None:
         .replace("Live vLLM ", "Local-HBM\n")
         .replace(" (25 GB/s)", "\n(25 GB/s)")
         .replace(" (25ms MEMS)", "\n(25ms MEMS)")
-        .replace(" (W=6)", "\n(W=6)")
+        .replace(f" (W={w_sz})", f"\n(W={w_sz})")
         for m in df_e2e["mode"]
     ]
     e_cols = [C_HBM, C_CONCUR, C_RDMA, C_NAIVE, C_OPTIKV][: len(df_e2e)]
@@ -1155,24 +1163,22 @@ def make_fig10_live_3090_hil_replay() -> None:
     )
     ax.set_xticks(x_e, short_names, fontsize=8.0)
     ax.set_ylabel("Measured E2E Reuse TTFT on RTX 3090 (ms, log)")
-    ax.set_title("(a) Live RTX 3090 vLLM E2E Replay (N=12 x 8K, 5.25 vs. 3.01 GiB)")
+    ax.set_title(f"(a) Live RTX 3090 vLLM E2E Replay (N={n_sess} x 8K, {working_gib:.2f} vs. {pool_gib:.2f} GiB)")
     ax.legend(loc="lower left", fontsize=7.5, framealpha=0.92)
 
     # --- Panel (b): Law 3 Overlap Anatomy, MEMS Duty Cycle & CONCUR Wave-2 Stall ---
     ax = axes[1]
-    # Compare critical-path remote exposure (ms) against 36.5 ms RTX 3090 8K overlap shadow
     cats = ["RDMA Pool\n(25 GB/s)", "Optical-Naive\n(25ms MEMS)", "OptiKV-Fabric\n(25ms MEMS)"]
-    # Measured median transfer exposure: RDMA max(18.80, 17.17)=18.80; Optical-Naive 25.0+17.17=42.17; OptiKV 0.0 (prefetched off-path)
     xfer_exp = [18.80, 25.00 + dma_med, 0.0]
-    duty_vals = [
-        0.0,
-        float(df_e2e[df_e2e["mode"].str.contains("Optical-Naive")]["ocs_duty_pct"].iloc[0]),
-        float(df_e2e[df_e2e["mode"].str.contains("OptiKV-Fabric")]["ocs_duty_pct"].iloc[0]),
-    ]
+    duty_naive = float(df_e2e[df_e2e["mode"].str.contains("Optical-Naive")]["ocs_duty_pct"].iloc[0])
+    duty_optikv = float(df_e2e[df_e2e["mode"].str.contains("OptiKV-Fabric")]["ocs_duty_pct"].iloc[0])
+    duty_vals = [0.0, duty_naive, duty_optikv]
+    duty_ratio = duty_optikv / max(1e-6, duty_naive)
     xc = np.arange(len(cats))
     b_x = ax.bar(xc - 0.18, xfer_exp, width=0.34, color=[C_RDMA, C_NAIVE, C_OPTIKV], edgecolor="#222222", lw=0.6, label="Critical-path xfer exposure (ms)")
-    ovl_shadow = 0.70 * float(df_e2e[df_e2e["mode"].str.contains("OptiKV-Fabric")]["reuse_p50_ms"].iloc[0])
-    ax.axhline(ovl_shadow, color="#880000", ls="--", lw=1.6, label=f"Law 3 overlap shadow (0.7 x 52.2 = {ovl_shadow:.1f} ms)")
+    optikv_p50 = float(df_e2e[df_e2e["mode"].str.contains("OptiKV-Fabric")]["reuse_p50_ms"].iloc[0])
+    ovl_shadow = 0.70 * optikv_p50
+    ax.axhline(ovl_shadow, color="#880000", ls="--", lw=1.6, label=f"Law 3 overlap shadow (0.7 x {optikv_p50:.1f} = {ovl_shadow:.1f} ms)")
     ax.set_ylim(0, 62)
     for rect, v, note in zip(b_x, xfer_exp, ["18.8 ms\n(hidden)", f"{25.0+dma_med:.1f} ms\n(exposed!)", "0.0 ms\n(JIT hidden)"]):
         ax.text(rect.get_x() + rect.get_width() / 2, v + 1.4, note, ha="center", va="bottom", fontsize=7.2, fontweight="bold")
@@ -1188,14 +1194,14 @@ def make_fig10_live_3090_hil_replay() -> None:
         if idx_d == 0:
             ax_d.text(rect.get_x() + rect.get_width() / 2, 2.5, "N/A\n(elec.)", ha="center", va="bottom", fontsize=7.0, color="#555555")
         else:
-            lbl_d = f"{dv:.1f}%\n(8.06x)" if idx_d == 2 else f"{dv:.1f}%"
+            lbl_d = f"{dv:.1f}%\n({duty_ratio:.2f}x)" if idx_d == 2 else f"{dv:.1f}%"
             ax_d.text(rect.get_x() + rect.get_width() / 2, dv + 2.2, lbl_d, ha="center", va="bottom", fontsize=7.3, fontweight="bold", color="#00553D" if idx_d == 2 else "#993300")
 
     stall_s = float(df_e2e[df_e2e["mode"].str.contains("CONCUR")]["admit_stall_s"].iloc[0])
     ax.text(
         0.03,
         0.95,
-        f"CONCUR (W=6) Wave-2 Turn-0 Stall: {stall_s:.2f} s\nOptiKV-Fabric Admission Stall: 0.00 s",
+        f"CONCUR (W={w_sz}) Wave-2 Turn-0 Stall: {stall_s:.2f} s\nOptiKV-Fabric Admission Stall: 0.00 s",
         transform=ax.transAxes,
         ha="left",
         va="top",

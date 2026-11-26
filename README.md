@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg)](requirements.txt)
-[![Tests](https://img.shields.io/badge/Invariants-22%2F22%20Passed-2ea44f.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Invariants-23%2F23%20Passed-2ea44f.svg)](tests/)
 
 [English](#overview) | [简体中文](#简体中文简介)
 
@@ -68,7 +68,7 @@ pip install -e .
 pytest tests/ -v
 ```
 
-Expected output: **22 passed** in <1 second (verifies GQA/MLA/Hybrid KV formulas, RTX 3090 calibration MAPE <10%, zero pinned evictions, strict Oracle & Belady dominance, standing-circuit $\tau = 0$, recompute abort safety, strict causal chronological JIT prefetching, Strata in-flight join, bipartite source–destination port exclusivity, WDM striping, decode batch-queue coupling, CONCUR admission control, and queue-aware DRAM co-steering).
+Expected output: **23 passed** in <1 second (verifies GQA/MLA/Hybrid KV formulas, RTX 3090 calibration MAPE <10%, zero pinned evictions, strict Oracle & Belady dominance, standing-circuit $\tau = 0$, recompute abort safety, strict causal chronological JIT prefetching, Strata in-flight join, bipartite source–destination port exclusivity, WDM striping, decode batch-queue coupling, CONCUR admission control, queue-aware DRAM co-steering, and **Theorem 1** analytical OCS duty-cycle & competitive channel-time bounds).
 
 ### 3. Regenerate All Publication Figures from Included Results
 
@@ -108,7 +108,7 @@ OptiKV-Fabric/
 │   └── policies/             # 15 scheduling & eviction policies (SIEVE, RR-Evict, S3-FIFO, CONCUR+RDMA, RDMA+Prefetch, OptiKV)
 ├── configs/                  # Model KV profiles (Qwen2.5/3/3.5, Llama-3.1, DeepSeek-V3) & RTX 3090 calibration YAML
 ├── scripts/                  # Calibration, live RTX 3090 vLLM replay, full simulation, 5-fold CV, fidelity & figure scripts
-├── tests/                    # 22 automated physical conservation & calibration accuracy checks
+├── tests/                    # 23 automated physical conservation, Theorem 1 & calibration accuracy checks
 ├── results/
 │   ├── 3090/                 # Measured RTX 3090 7B prefill, decode, APC, HBM cliff, PCIe Gen4 DMA & live replay CSVs
 │   ├── sim/                  # Experiment, sensitivity, ablation, load-sweep, ROI, 5-fold CV & V3 fidelity CSVs
@@ -164,7 +164,7 @@ Contact: Yonghao Wu (`yonghaowu369@gmail.com`), School of Electronic Science and
 ```bash
 pip install -r requirements.txt
 pip install -e .
-pytest tests/ -v                                # 22/22 物理守恒、严格因果与校准不变量测试
+pytest tests/ -v                                # 23/23 物理守恒、Theorem 1 界与校准不变量测试
 python scripts/make_publication_figures.py      # 一键重新生成全部论文图表
 ```
 

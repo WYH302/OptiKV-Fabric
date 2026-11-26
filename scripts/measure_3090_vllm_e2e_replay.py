@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Hardware-in-the-Loop (HIL) Live vLLM 0.34.0 End-to-End Prototype Replay on NVIDIA RTX 3090 24 GB.
 
-Replays a 12-session, 3-turn, 8K-context agentic workload (5.25 GiB active KV working set
-vs. 3.01 GiB / 880-block live RTX 3090 vLLM paged HBM KV pool at gpu_memory_utilization=0.78)
-directly on Qwen2.5-7B-Instruct (BF16, enforce_eager=True).
+Default mode reproduces the published N=12, W=6, gpu_mem=0.78 (enforce_eager=True) HIL replay
+(5.25 GiB active KV working set vs. 3.01 GiB / 880-block paged HBM pool).
+Pass `--dedicated` on a 100%-idle RTX 3090 to run N=14, W=7, gpu_mem=0.84 with CUDA graphs enabled.
 
 Compares 5 real serving modes on live vLLM 0.34.0 + real 448 MiB CUDA PCIe Gen4 KV DMA:
-  1. Live vLLM (Local-HBM LRU)          : Unmanaged round-robin N=12 -> real HBM capacity cliff!
-  2. Live vLLM + CONCUR Window (W=6)    : Pure real vLLM session admission control (zero fabric,
+  1. Live vLLM (Local-HBM LRU)          : Unmanaged round-robin N sessions -> real HBM capacity cliff!
+  2. Live vLLM + CONCUR Window (W)      : Pure real vLLM session admission control (zero fabric,
                                           shows Turn-0 Wave-2 admission stall vs. hot reuse!).
   3. Live vLLM + RDMA Pool (25 GB/s)    : Real vLLM delta execution + real 448 MiB CUDA H2D + paced 25 GB/s RDMA.
   4. Live vLLM + Optical-Naive (25ms)   : Real vLLM delta execution + real 448 MiB CUDA H2D + unlatched 25 ms MEMS.
@@ -19,6 +19,7 @@ confirming 100.0% lossless KV parity on live Qwen2.5-7B-Instruct weights.
 
 from __future__ import annotations
 
+import argparse
 import csv
 import os
 import statistics
@@ -88,22 +89,46 @@ def _run_vllm_req(llm, SamplingParams, token_ids: list[int], max_tokens: int = 1
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description="Live RTX 3090 vLLM 0.34.0 HIL E2E Replay")
+    parser.add_argument(
+        "--dedicated",
+        action="store_true",
+        help="Run 100%-idle dedicated GPU profile (gpu_mem=0.84, CUDA graphs, N=14, W=7).",
+    )
+    args = parser.parse_args()
+
+    gpu_mem = 0.84 if args.dedicated else 0.78
+    n_sessions = 14 if args.dedicated else 12
+    wave_size = 7 if args.dedicated else 6
+    flush_cnt = 11 if args.dedicated else 9
+    extra_cfg = None if args.dedicated else {"enforce_eager": True}
+
     t_all = time.perf_counter()
     RES.mkdir(parents=True, exist_ok=True)
     LLM, SamplingParams = bench_3090.import_vllm()
     tokenizer = bench_3090.load_tokenizer(str(MODEL_DIR))
 
-    # gpu_mem=0.78 + enforce_eager=True leaves ~5.3 GiB outside vLLM for the 448 MiB CUDA DMA buffer,
-    # WSL2/WDDM overhead, and any concurrent lightweight host jobs, while giving ~3.3 GiB vLLM paged KV pool
-    # (fits W=6 x 8K = 2.63 GiB at 100% HBM hit and cleanly overflows at N=12 x 8K = 5.25 GiB!).
     llm = bench_3090.build_llm(
         LLM,
         str(MODEL_DIR),
         max_model_len=16384,
         prefix_caching=True,
-        gpu_mem=0.78,
-        extra={"enforce_eager": True},
+        gpu_mem=gpu_mem,
+        extra=extra_cfg,
     )
+
+    kv_pool_blocks = 0
+    kv_pool_tokens = 0
+    kv_pool_gib = 0.0
+    try:
+        cc = llm.llm_engine.vllm_config.cache_config
+        kv_pool_blocks = int(getattr(cc, "num_gpu_blocks", 0) or 0)
+        bsize = int(getattr(cc, "block_size", 64) or 64)
+        kv_pool_tokens = kv_pool_blocks * bsize
+        kv_pool_gib = round(kv_pool_tokens * 57344 / (1024**3), 2)
+    except Exception:
+        pass
+    print(f"Detected vLLM KV pool: blocks={kv_pool_blocks}, tokens={kv_pool_tokens}, GiB={kv_pool_gib}", flush=True)
 
     try:
         # Allocate real 8K-token Qwen2.5-7B BF16 KV buffer (448 MiB = 28L x 2 x 4 x 8192 x 128 x 2B)
@@ -124,8 +149,6 @@ def main() -> int:
             flush=True,
         )
 
-        n_sessions = 12
-        wave_size = 6
         plen = 8192
         slen = 128
         kv_bytes_8k = plen * 57344  # 469,762,048 bytes (448 MiB)
@@ -138,7 +161,7 @@ def main() -> int:
         ]
 
         def _flush_apc(tag: int) -> None:
-            for d in range(9):
+            for d in range(flush_cnt):
                 dummy = bench_3090.build_ids(tokenizer, plen, salt=900000 + tag * 100 + d)
                 _run_vllm_req(llm, SamplingParams, dummy, max_tokens=1)
 
@@ -146,9 +169,9 @@ def main() -> int:
         summary_rows: list[dict] = []
 
         # ------------------------------------------------------------------
-        # Mode 1: Live vLLM (Local-HBM LRU) — Pure real round-robin N=12
+        # Mode 1: Live vLLM (Local-HBM LRU) — Pure real round-robin N=14
         # ------------------------------------------------------------------
-        print("\n[1/5] Running Mode 1: Live vLLM (Local-HBM LRU, N=12 overflowing HBM)...", flush=True)
+        print(f"\n[1/5] Running Mode 1: Live vLLM (Local-HBM LRU, N={n_sessions} overflowing HBM)...", flush=True)
         _flush_apc(1)
         m1_reuse, m1_cached = [], []
         for t in range(n_turns):
@@ -184,9 +207,10 @@ def main() -> int:
         print(f"  -> Mode 1 Reuse P50={summary_rows[-1]['reuse_p50_ms']} ms | P95={summary_rows[-1]['reuse_p95_ms']} ms | HBM Hit={summary_rows[-1]['hbm_hit_pct']}%", flush=True)
 
         # ------------------------------------------------------------------
-        # Mode 2: Live vLLM + CONCUR Window (W=6, 2 waves) — Pure real vLLM!
+        # Mode 2: Live vLLM + CONCUR Window (W=7, 2 waves) — Pure real vLLM!
         # ------------------------------------------------------------------
-        print("\n[2/5] Running Mode 2: Live vLLM + CONCUR Window (W=6, pure real vLLM)...", flush=True)
+        concur_label = f"Live vLLM + CONCUR (W={wave_size})"
+        print(f"\n[2/5] Running Mode 2: {concur_label} (pure real vLLM)...", flush=True)
         _flush_apc(2)
         m2_reuse, m2_cached = [], []
         wave1_wall_s = 0.0
@@ -200,7 +224,7 @@ def main() -> int:
                         m2_reuse.append(gpu_ms)
                         m2_cached.append(res["cached"])
                     req_rows.append({
-                        "mode": "Live vLLM + CONCUR (W=6)",
+                        "mode": concur_label,
                         "session": s,
                         "turn": t,
                         "gpu_ttft_ms": round(gpu_ms, 2),
@@ -213,7 +237,7 @@ def main() -> int:
             if w_idx == 0:
                 wave1_wall_s = time.perf_counter() - t_w0
         summary_rows.append({
-            "mode": "Live vLLM + CONCUR (W=6)",
+            "mode": concur_label,
             "reuse_p50_ms": round(_percentile(m2_reuse, 0.50), 2),
             "reuse_p95_ms": round(_percentile(m2_reuse, 0.95), 2),
             "reuse_mean_ms": round(statistics.mean(m2_reuse), 2),
@@ -347,6 +371,9 @@ def main() -> int:
         print(f"  -> Bit-Exact Greedy Token Match (16 tokens x 8 sessions = 128 tokens): {exact_ok}/8 ({parity_pct}%)", flush=True)
         for sr in summary_rows:
             sr["bit_exact_pct"] = parity_pct
+            sr["kv_pool_blocks"] = kv_pool_blocks
+            sr["kv_pool_tokens"] = kv_pool_tokens
+            sr["kv_pool_gib"] = kv_pool_gib
 
         with OUT_SUMMARY.open("w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=list(summary_rows[0].keys()))

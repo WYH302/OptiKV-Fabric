@@ -449,3 +449,68 @@ def test_queue_aware_dram_co_steering():
     cl["ocs"]["bandwidth_gb_s"] = 100.0
     res = _run(["optikv"], trace=trace, cluster=cl, optikv={"enable_prefetch": False})
     assert res.summary_rows[0]["dram_hit_rate"] > 0.0
+
+
+def test_theorem1_duty_cycle_and_reconfig_bound():
+    """Verify Theorem 1 analytical duty-cycle lower bound and competitive channel-time ratio."""
+    tau = 0.025
+    bw = 200e9
+    lat = 2e-6
+    payload_b = 500_000_000  # 500 MB burst
+    t_act = lat + payload_b / bw
+
+    # Part (a) & (b): Shared-port mode (K_lat = P)
+    for num_ports in (1, 2, 4):
+        cal = OpticalCalendar(num_ports, reconfig_s=tau, bandwidth_B_s=bw, latency_s=lat, num_workers=8)
+        m_bursts = 20
+        for idx in range(m_bursts):
+            cal.transfer_sequence(idx * 0.001, [(-1, payload_b)], commit=True)
+        switches = round(cal.total_reconfig_s / tau)
+        assert switches <= min(m_bursts, num_ports)
+        rho_sw = switches / m_bursts
+        exact_duty = t_act / (t_act + rho_sw * tau)
+        lower_duty = t_act / (t_act + (num_ports / m_bursts) * tau)
+        assert abs(cal.duty_cycle - exact_duty) < 1e-12
+        assert cal.duty_cycle >= lower_duty - 1e-12
+        t_tot = cal.total_active_s + cal.total_reconfig_s
+        t_opt = m_bursts * t_act + tau
+        assert t_tot / t_opt <= 1.0 + (num_ports - 1) * tau / t_opt + 1e-12
+
+    # Part (a) & (b): Strict bipartite mode (K_lat = P + W - 1)
+    num_ports, num_workers = 2, 4
+    k_lat = num_ports + num_workers - 1
+    cal_bi = OpticalCalendar(
+        num_ports,
+        reconfig_s=tau,
+        bandwidth_B_s=bw,
+        latency_s=lat,
+        num_workers=num_workers,
+        bipartite_port_contention=True,
+    )
+    m_bi = 24
+    for idx in range(m_bi):
+        cal_bi.transfer_sequence(idx * 0.001, [(-1, payload_b)], commit=True, src_worker=idx % num_workers)
+    sw_bi = round(cal_bi.total_reconfig_s / tau)
+    assert sw_bi <= min(m_bi, k_lat)
+    rho_bi = sw_bi / m_bi
+    assert abs(cal_bi.duty_cycle - t_act / (t_act + rho_bi * tau)) < 1e-12
+    assert cal_bi.duty_cycle >= t_act / (t_act + (k_lat / m_bi) * tau) - 1e-12
+    t_tot_bi = cal_bi.total_active_s + cal_bi.total_reconfig_s
+    t_opt_bi = m_bi * t_act + tau
+    assert t_tot_bi / t_opt_bi <= 1.0 + (k_lat - 1) * tau / t_opt_bi + 1e-12
+
+    # Part (c): Zero critical-path stall when gap >= wake + wait + tau_eff + t_act
+    cal_c = OpticalCalendar(1, reconfig_s=tau, bandwidth_B_s=bw, latency_s=lat, num_workers=1)
+    delta_wake = 0.02
+    gap_ok = delta_wake + tau + t_act + 0.01
+    p_ok = cal_c.transfer_sequence(delta_wake, [(-1, payload_b)], commit=True)[0]
+    t_crit_ok = max(0.0, p_ok.end_s - gap_ok)
+    assert t_crit_ok == 0.0
+
+    # Early arrival in-flight join strictly saves (gap_early - delta_wake) over arrival-time fetch
+    cal_j = OpticalCalendar(1, reconfig_s=tau, bandwidth_B_s=bw, latency_s=lat, num_workers=1)
+    p_j = cal_j.transfer_sequence(delta_wake, [(-1, payload_b)], commit=True)[0]
+    gap_early = delta_wake + 0.010
+    t_crit_join = max(0.0, p_j.end_s - gap_early)
+    t_crit_arrival = p_j.wait_s + p_j.reconfig_s + p_j.transfer_s
+    assert abs((t_crit_arrival - t_crit_join) - (gap_early - delta_wake)) < 1e-12
