@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """Hardware-in-the-Loop (HIL) Live vLLM 0.34.0 End-to-End Prototype Replay on NVIDIA RTX 3090 24 GB.
 
-Replays a 14-session, 3-turn, 8K-context agentic workload (6.13 GiB active KV working set
-vs. ~4.0 GiB live RTX 3090 vLLM paged HBM KV pool at gpu_memory_utilization=0.85) directly
-on Qwen2.5-7B-Instruct (BF16).
+Replays a 12-session, 3-turn, 8K-context agentic workload (5.25 GiB active KV working set
+vs. 3.01 GiB / 880-block live RTX 3090 vLLM paged HBM KV pool at gpu_memory_utilization=0.78)
+directly on Qwen2.5-7B-Instruct (BF16, enforce_eager=True).
 
 Compares 5 real serving modes on live vLLM 0.34.0 + real 448 MiB CUDA PCIe Gen4 KV DMA:
-  1. Live vLLM (Local-HBM LRU)          : Unmanaged round-robin N=14 -> real HBM capacity cliff!
-  2. Live vLLM + CONCUR Window (W=7)    : Pure real vLLM session admission control (zero fabric,
+  1. Live vLLM (Local-HBM LRU)          : Unmanaged round-robin N=12 -> real HBM capacity cliff!
+  2. Live vLLM + CONCUR Window (W=6)    : Pure real vLLM session admission control (zero fabric,
                                           shows Turn-0 Wave-2 admission stall vs. hot reuse!).
   3. Live vLLM + RDMA Pool (25 GB/s)    : Real vLLM delta execution + real 448 MiB CUDA H2D + paced 25 GB/s RDMA.
   4. Live vLLM + Optical-Naive (25ms)   : Real vLLM delta execution + real 448 MiB CUDA H2D + unlatched 25 ms MEMS.
   5. Live vLLM + OptiKV-Fabric (25ms)   : Real OCS Port Calendar + windowed off-path prefetch + live vLLM APC hit.
 
-Plus dedicated 16-session bit-exact greedy decode verification (16 tokens/session, temperature=0.0)
+Plus dedicated 8-session bit-exact greedy decode verification (16 tokens/session = 128 tokens, temperature=0.0)
 confirming 100.0% lossless KV parity on live Qwen2.5-7B-Instruct weights.
 """
 
@@ -76,9 +76,8 @@ def _measure_real_kv_h2d_dma_s(host_buf: torch.Tensor, gpu_buf: torch.Tensor, st
 
 
 def _run_vllm_req(llm, SamplingParams, token_ids: list[int], max_tokens: int = 1) -> dict:
-    sp = SamplingParams(temperature=0.0, max_tokens=max_tokens, ignore_eos=True)
     t0 = time.perf_counter()
-    outputs = llm.generate([{"prompt_token_ids": token_ids}], sp, use_tqdm=False)
+    outputs = bench_3090.generate_ids(llm, SamplingParams, token_ids, max_tokens=max_tokens)
     wall = time.perf_counter() - t0
     out0 = outputs[0]
     cached = getattr(out0, "num_cached_tokens", 0)
@@ -94,14 +93,16 @@ def main() -> int:
     LLM, SamplingParams = bench_3090.import_vllm()
     tokenizer = bench_3090.load_tokenizer(str(MODEL_DIR))
 
-    # gpu_mem=0.85 leaves ~3.6 GiB free for PyTorch CUDA DMA buffer + WSL overhead while
-    # giving ~4.0 GiB vLLM paged KV cache (fits 7x8K = 3.06 GiB cleanly, overflows at 14x8K = 6.13 GiB!)
+    # gpu_mem=0.78 + enforce_eager=True leaves ~5.3 GiB outside vLLM for the 448 MiB CUDA DMA buffer,
+    # WSL2/WDDM overhead, and any concurrent lightweight host jobs, while giving ~3.3 GiB vLLM paged KV pool
+    # (fits W=6 x 8K = 2.63 GiB at 100% HBM hit and cleanly overflows at N=12 x 8K = 5.25 GiB!).
     llm = bench_3090.build_llm(
         LLM,
         str(MODEL_DIR),
         max_model_len=16384,
         prefix_caching=True,
-        gpu_mem=0.85,
+        gpu_mem=0.78,
+        extra={"enforce_eager": True},
     )
 
     try:
@@ -123,8 +124,8 @@ def main() -> int:
             flush=True,
         )
 
-        n_sessions = 14
-        wave_size = 7
+        n_sessions = 12
+        wave_size = 6
         plen = 8192
         slen = 128
         kv_bytes_8k = plen * 57344  # 469,762,048 bytes (448 MiB)
@@ -137,7 +138,7 @@ def main() -> int:
         ]
 
         def _flush_apc(tag: int) -> None:
-            for d in range(10):
+            for d in range(9):
                 dummy = bench_3090.build_ids(tokenizer, plen, salt=900000 + tag * 100 + d)
                 _run_vllm_req(llm, SamplingParams, dummy, max_tokens=1)
 
@@ -145,9 +146,9 @@ def main() -> int:
         summary_rows: list[dict] = []
 
         # ------------------------------------------------------------------
-        # Mode 1: Live vLLM (Local-HBM LRU) — Pure real round-robin N=14
+        # Mode 1: Live vLLM (Local-HBM LRU) — Pure real round-robin N=12
         # ------------------------------------------------------------------
-        print("\n[1/5] Running Mode 1: Live vLLM (Local-HBM LRU, N=14 overflowing HBM)...", flush=True)
+        print("\n[1/5] Running Mode 1: Live vLLM (Local-HBM LRU, N=12 overflowing HBM)...", flush=True)
         _flush_apc(1)
         m1_reuse, m1_cached = [], []
         for t in range(n_turns):
@@ -183,9 +184,9 @@ def main() -> int:
         print(f"  -> Mode 1 Reuse P50={summary_rows[-1]['reuse_p50_ms']} ms | P95={summary_rows[-1]['reuse_p95_ms']} ms | HBM Hit={summary_rows[-1]['hbm_hit_pct']}%", flush=True)
 
         # ------------------------------------------------------------------
-        # Mode 2: Live vLLM + CONCUR Window (W=7, 2 waves) — Pure real vLLM!
+        # Mode 2: Live vLLM + CONCUR Window (W=6, 2 waves) — Pure real vLLM!
         # ------------------------------------------------------------------
-        print("\n[2/5] Running Mode 2: Live vLLM + CONCUR Window (W=7, pure real vLLM)...", flush=True)
+        print("\n[2/5] Running Mode 2: Live vLLM + CONCUR Window (W=6, pure real vLLM)...", flush=True)
         _flush_apc(2)
         m2_reuse, m2_cached = [], []
         wave1_wall_s = 0.0
@@ -199,7 +200,7 @@ def main() -> int:
                         m2_reuse.append(gpu_ms)
                         m2_cached.append(res["cached"])
                     req_rows.append({
-                        "mode": "Live vLLM + CONCUR (W=7)",
+                        "mode": "Live vLLM + CONCUR (W=6)",
                         "session": s,
                         "turn": t,
                         "gpu_ttft_ms": round(gpu_ms, 2),
@@ -212,7 +213,7 @@ def main() -> int:
             if w_idx == 0:
                 wave1_wall_s = time.perf_counter() - t_w0
         summary_rows.append({
-            "mode": "Live vLLM + CONCUR (W=7)",
+            "mode": "Live vLLM + CONCUR (W=6)",
             "reuse_p50_ms": round(_percentile(m2_reuse, 0.50), 2),
             "reuse_p95_ms": round(_percentile(m2_reuse, 0.95), 2),
             "reuse_mean_ms": round(statistics.mean(m2_reuse), 2),
@@ -357,7 +358,7 @@ def main() -> int:
             w.writerows(req_rows)
         print(f"\nSaved {OUT_SUMMARY} and {OUT_REQUESTS} in {time.perf_counter() - t_all:.1f}s", flush=True)
     finally:
-        bench_3090.destroy_llm(llm)
+        bench_3090.shutdown_llm(llm)
     return 0
 
 

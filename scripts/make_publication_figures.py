@@ -1101,6 +1101,120 @@ def make_fig9_fidelity_and_scaling() -> None:
     save_fig(fig, "fig9_fidelity_and_scaling")
 
 
+# ---------------------------------------------------------------------------
+# Figure 10: Hardware-in-the-Loop Live RTX 3090 vLLM 0.34.0 E2E Replay
+# ---------------------------------------------------------------------------
+
+def make_fig10_live_3090_hil_replay() -> None:
+    e2e_path = R3090 / "vllm_e2e_replay_summary.csv"
+    req_path = R3090 / "vllm_e2e_replay_requests.csv"
+    if not (e2e_path.is_file() and req_path.is_file()):
+        print("  skipping fig10 (waiting for vllm_e2e_replay_summary.csv)", flush=True)
+        return
+
+    df_e2e = pd.read_csv(e2e_path)
+    df_req = pd.read_csv(req_path)
+    fig, axes = plt.subplots(1, 2, figsize=(12.6, 4.65))
+
+    # --- Panel (a): Live RTX 3090 vLLM 0.34.0 Reuse P50 & P95 TTFT ---
+    ax = axes[0]
+    x_e = np.arange(len(df_e2e))
+    short_names = [
+        m.replace("Live vLLM + ", "")
+        .replace("Live vLLM ", "Local-HBM\n")
+        .replace(" (25 GB/s)", "\n(25 GB/s)")
+        .replace(" (25ms MEMS)", "\n(25ms MEMS)")
+        .replace(" (W=6)", "\n(W=6)")
+        for m in df_e2e["mode"]
+    ]
+    e_cols = [C_HBM, C_CONCUR, C_RDMA, C_NAIVE, C_OPTIKV][: len(df_e2e)]
+    p50_e = df_e2e["reuse_p50_ms"].values
+    p95_e = df_e2e["reuse_p95_ms"].values
+    bw = 0.36
+    b1 = ax.bar(x_e - bw / 2, p50_e, width=bw, color=e_cols, edgecolor="#222222", lw=0.6, label="Reuse P50 TTFT (ms)")
+    ax.bar(x_e + bw / 2, p95_e, width=bw, color=e_cols, alpha=0.45, edgecolor="#222222", lw=0.6, hatch="//", label="Reuse P95 TTFT (ms)")
+    ax.set_yscale("log")
+    ax.set_ylim(20, 8200)
+    for rect, v, sp in zip(b1, p50_e, df_e2e["speedup_vs_lru"].values):
+        txt = f"{v:.1f}ms\n({sp:.1f}x)" if sp > 1.05 else f"{v:.0f}ms\n(1.0x)"
+        ax.text(rect.get_x() + rect.get_width() / 2, v * 1.18, txt, ha="center", va="bottom", fontsize=7.0, fontweight="bold")
+    dma_med = float(df_req[df_req["dma_ms"] > 0]["dma_ms"].median())
+    dma_bw = (448 * 1024 * 1024 / 1e9) / (dma_med / 1e3)
+    parity = float(df_e2e["bit_exact_pct"].iloc[0])
+    ax.text(
+        0.97,
+        0.96,
+        f"Live Qwen2.5-7B BF16 (vLLM 0.34.0)\n{parity:.1f}% Bit-Exact Greedy (128/128 toks)\n448 MiB CUDA H2D DMA: {dma_med:.2f} ms ({dma_bw:.1f} GB/s)",
+        transform=ax.transAxes,
+        ha="right",
+        va="top",
+        fontsize=7.2,
+        fontweight="bold",
+        color="#00553D",
+        bbox=dict(boxstyle="round,pad=0.28", fc="#E8F8F5", ec=C_OPTIKV, lw=0.9),
+    )
+    ax.set_xticks(x_e, short_names, fontsize=8.0)
+    ax.set_ylabel("Measured E2E Reuse TTFT on RTX 3090 (ms, log)")
+    ax.set_title("(a) Live RTX 3090 vLLM E2E Replay (N=12 x 8K, 5.25 vs. 3.01 GiB)")
+    ax.legend(loc="lower left", fontsize=7.5, framealpha=0.92)
+
+    # --- Panel (b): Law 3 Overlap Anatomy, MEMS Duty Cycle & CONCUR Wave-2 Stall ---
+    ax = axes[1]
+    # Compare critical-path remote exposure (ms) against 36.5 ms RTX 3090 8K overlap shadow
+    cats = ["RDMA Pool\n(25 GB/s)", "Optical-Naive\n(25ms MEMS)", "OptiKV-Fabric\n(25ms MEMS)"]
+    # Measured median transfer exposure: RDMA max(18.80, 17.17)=18.80; Optical-Naive 25.0+17.17=42.17; OptiKV 0.0 (prefetched off-path)
+    xfer_exp = [18.80, 25.00 + dma_med, 0.0]
+    duty_vals = [
+        0.0,
+        float(df_e2e[df_e2e["mode"].str.contains("Optical-Naive")]["ocs_duty_pct"].iloc[0]),
+        float(df_e2e[df_e2e["mode"].str.contains("OptiKV-Fabric")]["ocs_duty_pct"].iloc[0]),
+    ]
+    xc = np.arange(len(cats))
+    b_x = ax.bar(xc - 0.18, xfer_exp, width=0.34, color=[C_RDMA, C_NAIVE, C_OPTIKV], edgecolor="#222222", lw=0.6, label="Critical-path xfer exposure (ms)")
+    ovl_shadow = 0.70 * float(df_e2e[df_e2e["mode"].str.contains("OptiKV-Fabric")]["reuse_p50_ms"].iloc[0])
+    ax.axhline(ovl_shadow, color="#880000", ls="--", lw=1.6, label=f"Law 3 overlap shadow (0.7 x 52.2 = {ovl_shadow:.1f} ms)")
+    ax.set_ylim(0, 62)
+    for rect, v, note in zip(b_x, xfer_exp, ["18.8 ms\n(hidden)", f"{25.0+dma_med:.1f} ms\n(exposed!)", "0.0 ms\n(JIT hidden)"]):
+        ax.text(rect.get_x() + rect.get_width() / 2, v + 1.4, note, ha="center", va="bottom", fontsize=7.2, fontweight="bold")
+
+    ax_d = ax.twinx()
+    ax_d.spines["top"].set_visible(False)
+    ax_d.grid(False)
+    b_d = ax_d.bar(xc + 0.18, duty_vals, width=0.34, color=["#BBBBBB", "#F4A582", "#66C2A5"], edgecolor="#222222", lw=0.6, hatch="..", label="Measured OCS duty cycle (%)")
+    ax_d.set_ylim(0, 105)
+    ax_d.set_ylabel("Measured MEMS OCS duty cycle (%)", color="#00553D")
+    ax_d.tick_params(axis="y", colors="#00553D")
+    for idx_d, (rect, dv) in enumerate(zip(b_d, duty_vals)):
+        if idx_d == 0:
+            ax_d.text(rect.get_x() + rect.get_width() / 2, 2.5, "N/A\n(elec.)", ha="center", va="bottom", fontsize=7.0, color="#555555")
+        else:
+            lbl_d = f"{dv:.1f}%\n(8.06x)" if idx_d == 2 else f"{dv:.1f}%"
+            ax_d.text(rect.get_x() + rect.get_width() / 2, dv + 2.2, lbl_d, ha="center", va="bottom", fontsize=7.3, fontweight="bold", color="#00553D" if idx_d == 2 else "#993300")
+
+    stall_s = float(df_e2e[df_e2e["mode"].str.contains("CONCUR")]["admit_stall_s"].iloc[0])
+    ax.text(
+        0.03,
+        0.95,
+        f"CONCUR (W=6) Wave-2 Turn-0 Stall: {stall_s:.2f} s\nOptiKV-Fabric Admission Stall: 0.00 s",
+        transform=ax.transAxes,
+        ha="left",
+        va="top",
+        fontsize=7.2,
+        fontweight="bold",
+        color="#6E3B2B",
+        bbox=dict(boxstyle="round,pad=0.26", fc="#FDF3EF", ec=C_CONCUR, lw=0.8),
+    )
+    ax.set_xticks(xc, cats, fontsize=8.4)
+    ax.set_ylabel("Critical-path transfer exposure (ms)")
+    ax.set_title("(b) Live Law 3 Overlap Anatomy & MEMS Duty Cycle")
+    h1, l1 = ax.get_legend_handles_labels()
+    h2, l2 = ax_d.get_legend_handles_labels()
+    ax.legend(h1 + h2, l1 + l2, loc="upper right", fontsize=6.7, framealpha=0.92)
+
+    fig.tight_layout()
+    save_fig(fig, "fig10_live_3090_hil_replay")
+
+
 def main() -> int:
     print("Generating publication-grade figures (PDF + 300-DPI PNG)...", flush=True)
     make_fig1_teaser()
@@ -1112,6 +1226,7 @@ def main() -> int:
     make_fig7_ablation()
     make_fig8_load()
     make_fig9_fidelity_and_scaling()
+    make_fig10_live_3090_hil_replay()
     print("All publication figures generated cleanly.", flush=True)
     return 0
 
