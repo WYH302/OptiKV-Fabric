@@ -237,6 +237,7 @@ def _run_policy(
                 spec=spec,
                 index=index,
                 cache=cache,
+                calendar=calendar,
                 free=free,
                 launch_t=wake_t,
                 prev_worker=session_last_worker.get(pf_sid),
@@ -466,19 +467,21 @@ def _choose_prefetch_worker(
     spec: PolicySpec,
     index: int,
     cache: CacheStore,
+    calendar: OpticalCalendar,
     free: list[float],
     launch_t: float,
     prev_worker: int | None,
     session_prev: tuple[BlockRef, ...],
 ) -> int:
-    """Pick the best worker for async prefetching: maximize existing prefix locality
-    (so we only fetch the delta instead of duplicating entire prefixes), respect
-    pinned-memory headroom, and keep low worker queue."""
+    """Pick the best worker for async prefetching: maximize existing prefix locality,
+    respect pinned-memory headroom, prefer workers already physically matched to an
+    optical pool port (matching-aware affinity), and keep low worker queue."""
     if not spec.routing:
         return min(
             range(cache.n_workers),
             key=lambda w: (max(0.0, free[w] - launch_t), (w - index) % cache.n_workers),
         )
+    is_optical = spec.optical != "none"
     best_w = prev_worker if (prev_worker is not None and 0 <= prev_worker < cache.n_workers) else 0
     best_key = None
     for w in range(cache.n_workers):
@@ -487,7 +490,6 @@ def _choose_prefetch_worker(
         pin_util = pinned / cap if cap > 0 else 1.0
         over_cap = 1 if pin_util >= spec.prefetch_utilization_cap else 0
         q = max(0.0, free[w] - launch_t)
-        # Count leading blocks already hot in HBM on worker w
         hbm_w = cache.rows[("hbm", w)]
         local_hit_tok = 0
         for b in session_prev:
@@ -496,8 +498,10 @@ def _choose_prefetch_worker(
             else:
                 break
         not_prev = 0 if (prev_worker is not None and w == prev_worker) else 1
-        # Prioritize: (1) unpinned headroom, (2) low queue bucket (10ms), (3) highest local HBM hits, (4) prev_worker stickiness
-        key = (over_cap, int(q / 0.01), -local_hit_tok, not_prev, pin_util, w)
+        # Matching-aware optical affinity: when a session has no local HBM hits on a worker,
+        # prefer a worker already physically latched to the Optical KV Pool (tau_eff = 0).
+        not_latched = 0 if (is_optical and calendar.is_pool_latched(w)) else 1
+        key = (over_cap, int(q / 0.01), -local_hit_tok, not_latched, not_prev, pin_util, w)
         if best_key is None or key < best_key:
             best_key = key
             best_w = w
@@ -532,8 +536,9 @@ def _choose_worker(
 
     eff_arrival = request.arrival_s + admission_delay_s
 
-    # Candidate worker pruning for very long 16-token block requests (exact fast path)
-    if len(request.blocks) > 512 and workers > 2:
+    # Candidate worker pruning for long block requests (exact fast path: evaluates all workers
+    # holding b0 in HBM/DRAM, preferred_worker, all pool-latched workers, and 2 lowest-queue workers)
+    if len(request.blocks) > 128 and workers > 2:
         b0 = request.blocks[0].block_id
         cands = {
             w
@@ -542,6 +547,8 @@ def _choose_worker(
         }
         if preferred_worker is not None:
             cands.add(preferred_worker)
+        if spec.optical != "none":
+            cands.update(calendar.latched_pool_workers())
         by_q = sorted(range(workers), key=lambda w: (max(0.0, free[w] - eff_arrival), w))
         cands.add(by_q[0])
         cands.add(by_q[1])
@@ -1092,11 +1099,7 @@ def _transfer_plans(
         return []
     plans = calendar.transfer_sequence(book_at, segments, commit=commit, src_worker=src_worker)
     if commit and spec.optical == "naive":
-        for port in calendar.ports:
-            port.target = None
-        if calendar.bipartite_port_contention:
-            for wp in calendar.worker_ports:
-                wp.target = None
+        calendar.teardown_all()
     return plans
 
 
@@ -1242,9 +1245,10 @@ def _spill_hbm_victims(
             is_anchor = victim.block_id in cache.anchors
             sc = victim.reuse_score
             dram_pressured = dram_cap > 0 and (cache.used[("dram", worker)] / dram_cap) >= 0.85
-            pool_pressured = pool_cap > 0 and (cache.used[("optical_pool", None)] / pool_cap) >= 0.85
             admit_dram = (not dram_pressured) or is_anchor or (sc >= spec.tier_dram_min_p)
-            admit_pool = (not pool_pressured) or is_anchor or (sc >= spec.tier_dram_min_p)
+            # Large disaggregated Optical Pool uses Prefix-GDSF eviction directly rather than
+            # dropping first-seen Turn-0 prefixes prematurely above 85% occupancy.
+            admit_pool = True
             # Preserve prefix-dependency ordering (root > leaf) when spilling to DRAM/Optical Pool
             deaged_ev = victim.evict_score - hbm_aging
             raw_ev = deaged_ev if deaged_ev > 1e-12 else ((sc * 1e-6) / max(1, victim.nbytes))

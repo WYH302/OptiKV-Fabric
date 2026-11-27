@@ -1,17 +1,21 @@
-"""Optical circuit calendar (OCS) and contended electrical NIC calendar.
+"""Optical Circuit Switch (OCS) Port Calendar with Strict Bipartite Matching Conservation,
+and Contended Electrical RDMA NIC Calendar.
 
-OCS physics:
-- A standing circuit to the same target pays tau = 0.
-- Switching a port to a different target pays the configured reconfiguration delay tau.
-- Concurrent optical links per fabric pool must be in {1, 2, 4, 8}.
-- Supports parallel multi-port execution across distinct targets, optional strict
-  bipartite source-destination transceiver port contention, and WDM multi-wavelength
-  striping (W in {1, 2, 4}) across optical links.
-- Tracks active transfer time and reconfiguration dead time to compute OCS duty cycle.
-
-Electrical NIC physics:
-- Packet-switched RDMA has tau = 0 (no circuit switching) but finite per-worker NIC
-  bandwidth with realistic serialization queuing under concurrent transfers.
+Physical OCS Conservation Laws:
+- An optical circuit switch connecting W GPU worker transceivers to P Optical KV Pool
+  ports (plus optional peer-to-peer GPU links) maintains a valid bipartite matching at
+  every instant: each pool port p in {0..P-1} is physically latched to AT MOST ONE
+  worker `connected_worker`, and each worker transceiver w in {0..W-1} is physically
+  latched to AT MOST ONE optical port `matched_port`.
+- Consequently, at any instant, at most min(W, P) workers can hold active standing
+  circuits to the Optical KV Pool simultaneously.
+- A standing circuit hit (tau = 0) occurs ONLY when the requested physical edge
+  (src_worker, target) is already intact in the active matching.
+- Switching port p from old_worker to a different src_worker (or to a different target)
+  physically rotates the MEMS mirror, tearing down the old worker's latch and incurring
+  reconfiguration dead time tau.
+- Supports WDM multi-wavelength striping (W_wdm >= 1) and both non-oversubscribed
+  (P >= W) and oversubscribed (P < W) port provisioning.
 """
 
 from __future__ import annotations
@@ -23,6 +27,8 @@ from dataclasses import dataclass
 class Port:
     free_at: float = 0.0
     target: int | None = None
+    connected_worker: int | None = None
+    matched_port: int | None = None
 
 
 @dataclass(frozen=True)
@@ -49,11 +55,11 @@ class OpticalCalendar:
         latency_s: float,
         *,
         num_workers: int = 8,
-        bipartite_port_contention: bool = False,
+        bipartite_port_contention: bool = True,
         wdm_wavelengths: int = 1,
     ) -> None:
-        if num_ports not in (1, 2, 4, 8):
-            raise ValueError(f"concurrent links must be in {{1, 2, 4, 8}}, got {num_ports}")
+        if num_ports not in (1, 2, 4, 8, 16, 32):
+            raise ValueError(f"concurrent links must be in {{1, 2, 4, 8, 16, 32}}, got {num_ports}")
         if wdm_wavelengths < 1:
             raise ValueError(f"wdm_wavelengths must be >= 1, got {wdm_wavelengths}")
         self.reconfig_s = float(reconfig_s)
@@ -61,9 +67,11 @@ class OpticalCalendar:
         self.latency_s = float(latency_s)
         self.ports = [Port() for _ in range(num_ports)]
         self.num_workers = int(max(1, num_workers))
+        # Always enforce physical matching conservation when src_worker is provided;
+        # bipartite_port_contention controls whether worker-side transceiver time serialization
+        # is strictly enforced in addition to physical edge matching.
         self.bipartite_port_contention = bool(bipartite_port_contention)
         self.wdm_wavelengths = int(wdm_wavelengths)
-        # Per-worker optical transceiver state (used when bipartite_port_contention=True)
         self.worker_ports = [Port() for _ in range(self.num_workers)]
         self.total_active_s: float = 0.0
         self.total_reconfig_s: float = 0.0
@@ -83,6 +91,24 @@ class OpticalCalendar:
             return 0.0
         return self.total_active_s / denom
 
+    def latched_pool_workers(self) -> set[int]:
+        """Return the set of workers currently physically matched to the Optical Pool (-1).
+        By bipartite matching conservation, len(latched_pool_workers()) <= min(W, P)."""
+        return {
+            p.connected_worker
+            for p in self.ports
+            if p.target == -1 and p.connected_worker is not None
+        }
+
+    def is_pool_latched(self, worker: int) -> bool:
+        if not (0 <= worker < self.num_workers):
+            return False
+        mp = self.worker_ports[worker].matched_port
+        if mp is None or not (0 <= mp < len(self.ports)):
+            return False
+        port = self.ports[mp]
+        return port.connected_worker == worker and port.target == -1
+
     def min_wait_s(self, now: float, src_worker: int | None = None) -> float:
         pool_wait = min(max(0.0, port.free_at - now) for port in self.ports)
         if self.bipartite_port_contention and src_worker is not None and 0 <= src_worker < self.num_workers:
@@ -91,16 +117,20 @@ class OpticalCalendar:
         return pool_wait
 
     def active_targets(self, src_worker: int | None = None) -> set[int]:
-        pool_targets = {port.target for port in self.ports if port.target is not None}
-        if self.bipartite_port_contention and src_worker is not None and 0 <= src_worker < self.num_workers:
-            wt = self.worker_ports[src_worker].target
-            return {wt} if (wt is not None and wt in pool_targets) else set()
-        return pool_targets
+        """Return targets reachable from `src_worker` via an intact standing circuit (tau = 0)."""
+        if src_worker is not None and 0 <= src_worker < self.num_workers:
+            mp = self.worker_ports[src_worker].matched_port
+            if mp is not None and 0 <= mp < len(self.ports):
+                p = self.ports[mp]
+                if p.connected_worker == src_worker and p.target is not None:
+                    return {p.target}
+            return set()
+        return {port.target for port in self.ports if port.target is not None}
 
     def snapshot(self):
         return (
-            [(port.free_at, port.target) for port in self.ports],
-            [(port.free_at, port.target) for port in self.worker_ports],
+            [(p.free_at, p.target, p.connected_worker, p.matched_port) for p in self.ports],
+            [(p.free_at, p.target, p.connected_worker, p.matched_port) for p in self.worker_ports],
             self.total_active_s,
             self.total_reconfig_s,
             self.total_transfers,
@@ -109,59 +139,123 @@ class OpticalCalendar:
 
     def restore(self, snap) -> None:
         port_state, worker_state, act, rec, xfers, hits = snap
-        for port, (free_at, target) in zip(self.ports, port_state):
+        for port, (free_at, target, cw, mp) in zip(self.ports, port_state):
             port.free_at = free_at
             port.target = target
-        for port, (free_at, target) in zip(self.worker_ports, worker_state):
+            port.connected_worker = cw
+            port.matched_port = mp
+        for port, (free_at, target, cw, mp) in zip(self.worker_ports, worker_state):
             port.free_at = free_at
             port.target = target
+            port.connected_worker = cw
+            port.matched_port = mp
         self.total_active_s = act
         self.total_reconfig_s = rec
         self.total_transfers = xfers
         self.standing_hits = hits
 
+    def teardown_all(self) -> None:
+        """Tear down all optical circuit latches (stateless Optical-Naive behavior)."""
+        for port in self.ports:
+            port.target = None
+            port.connected_worker = None
+            port.matched_port = None
+        for wp in self.worker_ports:
+            wp.target = None
+            wp.connected_worker = None
+            wp.matched_port = None
+
     def _one(self, now: float, target: int, nbytes: int, src_worker: int | None = None) -> TransferPlan:
-        # WDM multi-wavelength striping scales effective burst bandwidth up to wdm_wavelengths
-        # over a single fiber pair (Yoon & Yu 2026 WDM + MEMS model)
         xfer = self.transfer_time(nbytes, wavelengths=self.wdm_wavelengths)
-        w_port = (
-            self.worker_ports[src_worker]
-            if (self.bipartite_port_contention and src_worker is not None and 0 <= src_worker < self.num_workers)
-            else None
-        )
-        # In bipartite mode, if target is another worker's HBM (target >= 0), its transceiver also contends
+        valid_src = src_worker is not None and 0 <= src_worker < self.num_workers
+        w_port = self.worker_ports[src_worker] if valid_src else None
         dst_w_port = (
             self.worker_ports[target]
             if (self.bipartite_port_contention and 0 <= target < self.num_workers)
             else None
         )
-        best: tuple[float, int, float, float, bool] | None = None
+
+        best: tuple[float, int, float, int, float, float, bool] | None = None
         for index, port in enumerate(self.ports):
             start = max(now, port.free_at)
-            if w_port is not None:
+            if self.bipartite_port_contention and w_port is not None:
                 start = max(start, w_port.free_at)
             if dst_w_port is not None:
                 start = max(start, dst_w_port.free_at)
-            pool_standing = port.target == target
-            if w_port is not None:
-                is_standing = pool_standing and (w_port.target == target)
+
+            # Strict bipartite matching check:
+            # A standing circuit hit (tau = 0) requires the EXACT physical edge (src_worker, target)
+            # to be currently latched on this optical port!
+            if valid_src:
+                is_standing = (
+                    port.target == target
+                    and port.connected_worker == src_worker
+                    and w_port is not None
+                    and w_port.matched_port == index
+                    and w_port.target == target
+                )
             else:
-                is_standing = pool_standing
+                is_standing = (port.target == target)
+
             tau = 0.0 if is_standing else self.reconfig_s
             end = start + tau + xfer
-            cand = (end, index, start, tau, is_standing)
+            # Tie-break preference when reconfiguring:
+            # (0) standing circuit, (1) unlatched/empty port, (2) least-recently-used port (lowest free_at).
+            steal_rank = 0 if is_standing else (1 if port.connected_worker is None else 2)
+            cand = (end, steal_rank, port.free_at, index, start, tau, is_standing)
             if best is None or cand < best:
                 best = cand
+
         assert best is not None
-        end, index, start, tau, is_standing = best
+        end, _, _, index, start, tau, is_standing = best
         port = self.ports[index]
+
+        if not is_standing:
+            # 1. Tear down any previous worker latched to this optical port (strict port conservation!)
+            old_w = port.connected_worker
+            if old_w is not None and 0 <= old_w < self.num_workers:
+                old_wp = self.worker_ports[old_w]
+                if old_wp.matched_port == index:
+                    old_wp.matched_port = None
+                    old_wp.target = None
+            old_dst = port.target
+            if old_dst is not None and 0 <= old_dst < self.num_workers:
+                old_dp = self.worker_ports[old_dst]
+                if old_dp.matched_port == index:
+                    old_dp.matched_port = None
+                    old_dp.target = None
+
+            # 2. If src_worker was previously latched to a DIFFERENT optical port, release that old port!
+            if valid_src and w_port is not None:
+                old_p_idx = w_port.matched_port
+                if old_p_idx is not None and old_p_idx != index and 0 <= old_p_idx < len(self.ports):
+                    old_p = self.ports[old_p_idx]
+                    if old_p.connected_worker == src_worker:
+                        old_p.connected_worker = None
+                        old_p.target = None
+
+            # 3. If destination peer worker was latched to a different port, release it too
+            if dst_w_port is not None:
+                old_dp_idx = dst_w_port.matched_port
+                if old_dp_idx is not None and old_dp_idx != index and 0 <= old_dp_idx < len(self.ports):
+                    old_dp_port = self.ports[old_dp_idx]
+                    if old_dp_port.target == target or old_dp_port.connected_worker == target:
+                        old_dp_port.connected_worker = None
+                        old_dp_port.target = None
+
+        # Commit new matching state
         port.free_at = end
         port.target = target
-        if w_port is not None:
+        port.connected_worker = src_worker if valid_src else None
+        if valid_src and w_port is not None:
             w_port.free_at = end
             w_port.target = target
+            w_port.matched_port = index
         if dst_w_port is not None:
             dst_w_port.free_at = end
+            dst_w_port.target = src_worker if valid_src else target
+            dst_w_port.matched_port = index
+
         self.total_active_s += xfer
         self.total_reconfig_s += tau
         self.total_transfers += 1
@@ -186,8 +280,7 @@ class OpticalCalendar:
         src_worker: int | None = None,
         parallel: bool = True,
     ) -> list[TransferPlan]:
-        """Move each (target, nbytes) segment. Uses parallel multi-port dispatch when multiple
-        optical ports are available and bipartite single-port serialization does not bind."""
+        """Move each (target, nbytes) segment under strict bipartite matching conservation."""
         snap = self.snapshot()
         plans: list[TransferPlan] = []
         cursor = now

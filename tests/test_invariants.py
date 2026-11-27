@@ -194,7 +194,7 @@ def test_standing_circuit_same_target_tau_is_zero():
 
 
 def test_standing_circuit_kept_for_reservation_and_optikv_dropped_for_naive():
-    # Two consecutive remote fetches from worker 0 to different idle workers (1 and 2)
+    # Two consecutive remote fetches along the SAME physical edge (worker 1 <- worker 0)
     shared1 = (BlockRef("s1", 4096),)
     shared2 = (BlockRef("s2", 4096),)
     trace = Trace(
@@ -205,11 +205,11 @@ def test_standing_circuit_kept_for_reservation_and_optikv_dropped_for_naive():
             Request("w1", 0.0, "h1", 0, 0.0, shared1, assigned_worker=0),
             Request("w2", 1.0, "h2", 0, 0.0, shared2, assigned_worker=0),
             Request("p1", 10.0, "c1", 0, 0.0, shared1 + (BlockRef("f1", 512),), assigned_worker=1),
-            Request("p2", 20.0, "c2", 0, 0.0, shared2 + (BlockRef("f2", 512),), assigned_worker=2),
+            Request("p2", 20.0, "c2", 0, 0.0, shared2 + (BlockRef("f2", 512),), assigned_worker=1),
         ],
     )
     cl = _cluster(reconfig_us=25000.0)
-    cl["num_workers"] = 3
+    cl["num_workers"] = 2
     result = _run(
         ["optical_naive", "optical_reservation", "optikv"],
         trace=trace,
@@ -364,7 +364,7 @@ def test_bipartite_port_contention_and_wdm_striping():
 
 
 def test_parallel_multiport_transfer_sequence():
-    cal = OpticalCalendar(2, reconfig_s=0.0, bandwidth_B_s=100e9, latency_s=0.0, num_workers=4)
+    cal = OpticalCalendar(2, reconfig_s=0.0, bandwidth_B_s=100e9, latency_s=0.0, num_workers=4, bipartite_port_contention=False)
     plans = cal.transfer_sequence(0.0, [(1, 100_000_000), (2, 100_000_000)], commit=True)
     assert len(plans) == 2
     assert plans[0].start_s == 0.0 and plans[1].start_s == 0.0
@@ -451,65 +451,68 @@ def test_queue_aware_dram_co_steering():
     assert res.summary_rows[0]["dram_hit_rate"] > 0.0
 
 
-def test_theorem1_duty_cycle_and_reconfig_bound():
-    """Verify Theorem 1 analytical duty-cycle lower bound and competitive channel-time ratio."""
+def test_theorem1_bipartite_matching_conservation_and_bounds():
+    """Verify strict physical bipartite matching conservation and Theorem 1 bounds
+    across both non-oversubscribed (P >= W) and oversubscribed (P < W) OCS regimes."""
     tau = 0.025
     bw = 200e9
     lat = 2e-6
-    payload_b = 500_000_000  # 500 MB burst
+    payload_b = 500_000_000  # 500 MB burst (2.5 ms active)
     t_act = lat + payload_b / bw
 
-    # Part (a) & (b): Shared-port mode (K_lat = P)
-    for num_ports in (1, 2, 4):
-        cal = OpticalCalendar(num_ports, reconfig_s=tau, bandwidth_B_s=bw, latency_s=lat, num_workers=8)
-        m_bursts = 20
-        for idx in range(m_bursts):
-            cal.transfer_sequence(idx * 0.001, [(-1, payload_b)], commit=True)
-        switches = round(cal.total_reconfig_s / tau)
-        assert switches <= min(m_bursts, num_ports)
-        rho_sw = switches / m_bursts
-        exact_duty = t_act / (t_act + rho_sw * tau)
-        lower_duty = t_act / (t_act + (num_ports / m_bursts) * tau)
-        assert abs(cal.duty_cycle - exact_duty) < 1e-12
-        assert cal.duty_cycle >= lower_duty - 1e-12
-        t_tot = cal.total_active_s + cal.total_reconfig_s
-        t_opt = m_bursts * t_act + tau
-        assert t_tot / t_opt <= 1.0 + (num_ports - 1) * tau / t_opt + 1e-12
+    # Regime 1 (Non-oversubscribed P >= W): each worker latches its own dedicated pool port;
+    # total switches S_sw <= min(M, W), and duty_cycle >= t_act / (t_act + (W/M)*tau).
+    W, P = 8, 8
+    cal_1to1 = OpticalCalendar(P, reconfig_s=tau, bandwidth_B_s=bw, latency_s=lat, num_workers=W, bipartite_port_contention=True)
+    m_1to1 = 64
+    for idx in range(m_1to1):
+        cal_1to1.transfer_sequence(idx * 0.005, [(-1, payload_b)], commit=True, src_worker=idx % W)
+        assert len(cal_1to1.latched_pool_workers()) <= min(W, P)
+    sw_1to1 = round(cal_1to1.total_reconfig_s / tau)
+    assert sw_1to1 == W  # Exactly W initial cold latches, zero reconfigurations thereafter!
+    lower_duty = t_act / (t_act + (W / m_1to1) * tau)
+    assert abs(cal_1to1.duty_cycle - lower_duty) < 1e-12
+    t_tot = cal_1to1.total_active_s + cal_1to1.total_reconfig_s
+    t_opt = m_1to1 * t_act + tau
+    assert t_tot / t_opt <= 1.0 + (W - 1) * tau / t_opt + 1e-12
 
-    # Part (a) & (b): Strict bipartite mode (K_lat = P + W - 1)
-    num_ports, num_workers = 2, 4
-    k_lat = num_ports + num_workers - 1
-    cal_bi = OpticalCalendar(
-        num_ports,
-        reconfig_s=tau,
-        bandwidth_B_s=bw,
-        latency_s=lat,
-        num_workers=num_workers,
-        bipartite_port_contention=True,
-    )
-    m_bi = 24
-    for idx in range(m_bi):
-        cal_bi.transfer_sequence(idx * 0.001, [(-1, payload_b)], commit=True, src_worker=idx % num_workers)
-    sw_bi = round(cal_bi.total_reconfig_s / tau)
-    assert sw_bi <= min(m_bi, k_lat)
-    rho_bi = sw_bi / m_bi
-    assert abs(cal_bi.duty_cycle - t_act / (t_act + rho_bi * tau)) < 1e-12
-    assert cal_bi.duty_cycle >= t_act / (t_act + (k_lat / m_bi) * tau) - 1e-12
-    t_tot_bi = cal_bi.total_active_s + cal_bi.total_reconfig_s
-    t_opt_bi = m_bi * t_act + tau
-    assert t_tot_bi / t_opt_bi <= 1.0 + (k_lat - 1) * tau / t_opt_bi + 1e-12
+    # Regime 2 (Strict 4:1 Oversubscription: W=32 GPUs sharing P=8 pool ports):
+    # At EVERY instant, at most P=8 workers can be physically matched to the pool!
+    # Round-robin across 32 GPUs MUST pay tau on every transfer (ZERO impossible permanent 32-on-8 locks!).
+    W_ov, P_ov = 32, 8
+    cal_ov = OpticalCalendar(P_ov, reconfig_s=tau, bandwidth_B_s=bw, latency_s=lat, num_workers=W_ov, bipartite_port_contention=True)
+    m_ov = 64
+    for idx in range(m_ov):
+        cal_ov.transfer_sequence(idx * 0.01, [(-1, payload_b)], commit=True, src_worker=idx % W_ov)
+        assert len(cal_ov.latched_pool_workers()) <= P_ov
+    sw_ov = round(cal_ov.total_reconfig_s / tau)
+    assert sw_ov == m_ov  # Every round-robin access across 32 GPUs on 8 ports MUST physically switch!
+    assert cal_ov.standing_hits == 0
+    assert abs(cal_ov.duty_cycle - t_act / (t_act + tau)) < 1e-12
 
-    # Part (c): Zero critical-path stall when gap >= wake + wait + tau_eff + t_act
+    # Regime 2b (Oversubscribed P=2, W=8 with matching-aware dwell of B=4 bursts per latched worker):
+    cal_dw = OpticalCalendar(2, reconfig_s=tau, bandwidth_B_s=bw, latency_s=lat, num_workers=8, bipartite_port_contention=True)
+    dwell = 4
+    m_dw = 32
+    for idx in range(m_dw):
+        w_grp = (idx // dwell) % 8
+        cal_dw.transfer_sequence(idx * 0.01, [(-1, payload_b)], commit=True, src_worker=w_grp)
+        assert len(cal_dw.latched_pool_workers()) <= 2
+    sw_dw = round(cal_dw.total_reconfig_s / tau)
+    assert sw_dw == m_dw // dwell
+    assert abs(cal_dw.duty_cycle - t_act / (t_act + tau / dwell)) < 1e-12
+
+    # Part (2): Zero critical-path stall when gap >= wake + wait + tau_eff + t_act (even when tau_eff = tau!)
     cal_c = OpticalCalendar(1, reconfig_s=tau, bandwidth_B_s=bw, latency_s=lat, num_workers=1)
     delta_wake = 0.02
     gap_ok = delta_wake + tau + t_act + 0.01
-    p_ok = cal_c.transfer_sequence(delta_wake, [(-1, payload_b)], commit=True)[0]
+    p_ok = cal_c.transfer_sequence(delta_wake, [(-1, payload_b)], commit=True, src_worker=0)[0]
     t_crit_ok = max(0.0, p_ok.end_s - gap_ok)
     assert t_crit_ok == 0.0
 
     # Early arrival in-flight join strictly saves (gap_early - delta_wake) over arrival-time fetch
     cal_j = OpticalCalendar(1, reconfig_s=tau, bandwidth_B_s=bw, latency_s=lat, num_workers=1)
-    p_j = cal_j.transfer_sequence(delta_wake, [(-1, payload_b)], commit=True)[0]
+    p_j = cal_j.transfer_sequence(delta_wake, [(-1, payload_b)], commit=True, src_worker=0)[0]
     gap_early = delta_wake + 0.010
     t_crit_join = max(0.0, p_j.end_s - gap_early)
     t_crit_arrival = p_j.wait_s + p_j.reconfig_s + p_j.transfer_s

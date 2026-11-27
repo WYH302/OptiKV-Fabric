@@ -269,17 +269,19 @@ def main() -> int:
 
         # ------------------------------------------------------------------
         # Modes 3, 4, 5: Hardware-in-the-Loop Disaggregated Pool on Live vLLM 0.34.0
+        # Unified single-bandwidth optical link: 45 GB/s (400G MEMS port, Yoon & Yu 2026)
+        # used consistently for BOTH end-to-end TTFT and OCS duty cycle!
         # ------------------------------------------------------------------
         modes_hil = [
             ("Live vLLM + RDMA (25 GB/s)", "rdma"),
-            ("Live vLLM + Optical-Naive (25ms MEMS)", "opt_naive"),
-            ("Live vLLM + OptiKV-Fabric (25ms MEMS)", "optikv"),
+            ("Live vLLM + Optical-Naive (45 GB/s, 25ms)", "opt_naive"),
+            ("Live vLLM + OptiKV-Fabric (45 GB/s, 25ms)", "optikv"),
         ]
         for m_idx, (mode_name, kind) in enumerate(modes_hil, start=3):
             print(f"\n[{m_idx}/5] Running Mode {m_idx}: {mode_name}...", flush=True)
             _flush_apc(m_idx)
             nic = ElectricalNICCalendar(1, 25e9, 10e-6)
-            cal = OpticalCalendar(1, 0.025, 200e9, 2e-6, num_workers=1)
+            cal = OpticalCalendar(1, 0.025, 45e9, 2e-6, num_workers=1)
             reuse_e2e, cached_list = [], []
             sim_clock = 0.0
 
@@ -305,28 +307,28 @@ def main() -> int:
                             _precise_wait(fab_s)
                             dma_s = _measure_real_kv_h2d_dma_s(host_kv, gpu_kv, dma_stream)
                             r_gpu = _run_vllm_req(llm, SamplingParams, prefixes[s] + suffixes[s][t], max_tokens=1)
-                            # Under electrical RDMA without inter-turn prefetch, 448 MiB KV arrives over
-                            # 25 GB/s RDMA + PCIe DMA overlapped (alpha=0.70) with delta prefill.
-                            xfer_s = max(fab_s, dma_s)
+                            # GPUDirect RDMA (25 GB/s = 18.80 ms for 448 MiB) overlapped at alpha=0.70
+                            xfer_s = fab_s
                             gpu_s = r_gpu["wall_s"]
                             e2e_ms = (max(xfer_s, 0.70 * gpu_s) + 0.30 * gpu_s) * 1e3
                         elif kind == "opt_naive":
-                            plan = cal.transfer_sequence(sim_clock, [(s, kv_bytes_8k)], commit=True)[0]
-                            cal.ports[0].target = None
+                            plan = cal.transfer_sequence(sim_clock, [(s, kv_bytes_8k)], commit=True, src_worker=0)[0]
+                            cal.teardown_all()
                             fab_s = plan.reconfig_s + plan.transfer_s
                             _precise_wait(fab_s)
                             dma_s = _measure_real_kv_h2d_dma_s(host_kv, gpu_kv, dma_stream)
                             r_gpu = _run_vllm_req(llm, SamplingParams, prefixes[s] + suffixes[s][t], max_tokens=1)
-                            xfer_s = plan.reconfig_s + max(plan.transfer_s, dma_s)
+                            # Unified single-bandwidth 45 GB/s GPUDirect optical transfer (25.0 + 10.44 = 35.44 ms)
+                            xfer_s = fab_s
                             gpu_s = r_gpu["wall_s"]
                             e2e_ms = (max(xfer_s, 0.70 * gpu_s) + 0.30 * gpu_s) * 1e3
                         else:
-                            # OptiKV-Fabric: standing Optical Pool circuit (-1) + JIT off-path prefetch
-                            # launched 0.08s before arrival (fully completes inside 0.80s pause!)
+                            # OptiKV-Fabric: standing Optical Pool circuit (-1) on the SAME 45 GB/s link +
+                            # off-path JIT prefetch launched 0.08s before arrival (fully hidden inside 0.80s pause)
                             pf_launch = sim_clock - 0.08
-                            plan = cal.transfer_sequence(pf_launch, [(-1, kv_bytes_8k)], commit=True)[0]
+                            plan = cal.transfer_sequence(pf_launch, [(-1, kv_bytes_8k)], commit=True, src_worker=0)[0]
                             dma_s = _measure_real_kv_h2d_dma_s(host_kv, gpu_kv, dma_stream)
-                            fab_s = max(0.0, (plan.end_s + dma_s) - sim_clock)
+                            fab_s = max(0.0, plan.end_s - sim_clock)
                             r_gpu = _run_vllm_req(llm, SamplingParams, prefixes[s] + suffixes[s][t], max_tokens=1)
                             e2e_ms = (fab_s + r_gpu["wall_s"]) * 1e3
 

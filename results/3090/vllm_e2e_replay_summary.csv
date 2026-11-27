@@ -1,6 +1,6 @@
 mode,reuse_p50_ms,reuse_p95_ms,reuse_mean_ms,admit_stall_s,hbm_hit_pct,ocs_duty_pct,bit_exact_pct,speedup_vs_lru,kv_pool_blocks,kv_pool_tokens,kv_pool_gib
-Live vLLM (LRU),1709.02,1845.8,1721.84,0.0,0.0,0.0,100.0,1.0,1024,65536,3.5
+Live vLLM (LRU),1709.01,1845.8,1721.84,0.0,0.0,0.0,100.0,1.0,1024,65536,3.5
 Live vLLM + CONCUR (W=6),43.65,44.42,43.71,10.83,100.0,0.0,100.0,39.15,1024,65536,3.5
 Live vLLM + RDMA (25 GB/s),44.49,44.98,44.48,0.0,100.0,0.0,100.0,38.41,1024,65536,3.5
-Live vLLM + Optical-Naive (25ms MEMS),54.94,55.25,54.96,0.0,100.0,8.6,100.0,31.11,1024,65536,3.5
-Live vLLM + OptiKV-Fabric (25ms MEMS),44.93,45.92,44.97,0.0,100.0,69.29,100.0,38.04,1024,65536,3.5
+"Live vLLM + Optical-Naive (45 GB/s, 25ms)",48.8,49.02,48.8,0.0,100.0,29.46,100.0,35.02,1024,65536,3.5
+"Live vLLM + OptiKV-Fabric (45 GB/s, 25ms)",44.93,45.92,44.97,0.0,100.0,90.93,100.0,38.04,1024,65536,3.5

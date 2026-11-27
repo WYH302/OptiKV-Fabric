@@ -9,14 +9,17 @@ import yaml
 
 from optikv.modelspec import ROOT
 
-# Cited from arXiv:2610.18444. These are not measurements from this project.
+# Cited from arXiv:2610.18444 (Yoon & Yu 2026) switch-only specs + industry pluggable transceiver baseline.
 COST_SOURCE = "arXiv:2610.18444"
 OCS_PORT_POWER_W = 0.39
 OCS_PORT_COST_USD = 520.0
 ELECTRICAL_400G_PORT_POWER_W = 39.4
 ELECTRICAL_400G_PORT_COST_USD_LOW = 583.0
 ELECTRICAL_400G_PORT_COST_USD_HIGH = 1090.0
-LEGAL_CONCURRENT_LINKS = (1, 2, 4, 8)
+# Pluggable 400G-DR4/FR4 optical transceiver per endpoint (~10 W, ~$400/end; 2 ends per link)
+TRANSCEIVER_400G_POWER_W_PER_END = 10.0
+TRANSCEIVER_400G_COST_USD_PER_END = 400.0
+LEGAL_CONCURRENT_LINKS = (1, 2, 4, 8, 16, 32)
 
 
 @dataclass(frozen=True)
@@ -78,7 +81,7 @@ class Cluster:
     ocs_bandwidth_gb_s: float
     ocs_latency_us: float
     ocs_reconfig_us: float
-    bipartite_port_contention: bool = False
+    bipartite_port_contention: bool = True
     wdm_wavelengths: int = 1
     couple_decode_queue: bool = False
     decode_batch_slots: int = 16
@@ -126,7 +129,7 @@ def cluster_from_dict(raw: dict) -> Cluster:
         ocs_bandwidth_gb_s=float(ocs.get("bandwidth_gb_s", 45.0)),
         ocs_latency_us=float(ocs.get("latency_us", 5.0)),
         ocs_reconfig_us=float(ocs.get("reconfig_us", 25000.0)),
-        bipartite_port_contention=bool(ocs.get("bipartite_port_contention", raw.get("bipartite_port_contention", False))),
+        bipartite_port_contention=bool(ocs.get("bipartite_port_contention", raw.get("bipartite_port_contention", True))),
         wdm_wavelengths=int(ocs.get("wdm_wavelengths", raw.get("wdm_wavelengths", 1))),
         couple_decode_queue=bool(raw.get("couple_decode_queue", False)),
         decode_batch_slots=int(raw.get("decode_batch_slots", 16)),
