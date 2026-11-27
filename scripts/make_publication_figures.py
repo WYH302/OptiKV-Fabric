@@ -16,6 +16,7 @@ Visual Constitution:
 from __future__ import annotations
 
 import re
+from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 
 import matplotlib
@@ -121,6 +122,8 @@ POLICY_LABEL = {
     "rdma_routing": "RDMA+Routing",
     "concur_rdma": "CONCUR+RDMA",
     "rdma_prefetch": "RDMA+Prefetch",
+    "rdma50_routing": "RDMA-50G+Rt",
+    "rdma50_prefetch": "RDMA-50G (400G)",
     "optical_naive": "Optical-Naive",
     "optical_reservation": "Optical-Resv.",
     "optikv": "OptiKV-Fabric",
@@ -140,6 +143,8 @@ POLICY_COLOR = {
     "rdma_routing": C_RDMA,
     "concur_rdma": C_CONCUR,
     "rdma_prefetch": C_RDMA_PF,
+    "rdma50_routing": "#B87300",
+    "rdma50_prefetch": "#2B6B56",
     "optical_naive": C_NAIVE,
     "optical_reservation": C_RESV,
     "optikv": C_OPTIKV,
@@ -161,6 +166,8 @@ POLICY_MARKER = {
     "rdma_routing": "s",
     "concur_rdma": "h",
     "rdma_prefetch": "p",
+    "rdma50_routing": "s",
+    "rdma50_prefetch": "^",
     "optical_naive": "D",
     "optical_reservation": "P",
     "optikv": "o",
@@ -204,6 +211,11 @@ def _fmt_ctx(n: int) -> str:
     if n >= 1024 and n % 1024 == 0:
         return f"{n // 1024}K"
     return str(n)
+
+
+def _hu1(val: float) -> str:
+    """Consistent decimal half-up rounding to 1 decimal place (matches LaTeX tables)."""
+    return str(Decimal(f"{val:.6f}").quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
 
 
 # ---------------------------------------------------------------------------
@@ -338,77 +350,79 @@ def make_fig1_teaser() -> None:
     # --- Panel (c): Honest End-to-End Performance-Power Pareto Frontier ---
     ax2 = fig.add_subplot(gs[2])
     gp_opt = float(peak.loc["optikv"])
+    gp_opt41 = float(peak.loc["optikv_4to1"])
     gp_orc = float(peak.loc["oracle_infinite_hbm"])
+    gp_r50 = float(peak.loc["rdma50_prefetch"])
     gp_rpf = float(peak.loc["rdma_prefetch"])
     gp_rrt = float(peak.loc["rdma_routing"])
 
     # Pareto region (upper-left: high goodput, low E2E switch+transceiver power)
     ax2.fill_between([220.0, 720.0], [3.15, 3.15], [4.75, 4.75], color=P_BLUE, alpha=0.55, zorder=0)
-    ax2.text(235.0, 4.58, "Pareto-Optimal Region", fontsize=7.6, fontweight="bold", color=C_BLACK, ha="left", va="top")
+    ax2.text(235.0, 4.62, "Pareto-Optimal Region", fontsize=7.5, fontweight="bold", color=C_BLACK, ha="left", va="top")
 
     # Oracle bound line
     ax2.axhline(gp_orc, color=C_BLACK, ls="--", lw=1.05, zorder=2)
-    ax2.text(3900.0, gp_orc + 0.09, f"Oracle ({gp_orc:.2f} req/s)",
-             fontsize=7.6, fontweight="bold", color=C_BLACK, ha="right", va="bottom")
+    ax2.text(3980.0, gp_orc + 0.11, f"Oracle ({gp_orc:.2f} req/s)",
+             fontsize=7.4, fontweight="bold", color=C_BLACK, ha="right", va="bottom")
 
     # Reference bandwidth-matched 200 GB/s electrical fabric (4x400G switch + transceivers)
     ax2.axvline(PWR_ELEC_1600G_E2E, color=C_HBM, ls=":", lw=1.05, zorder=1)
-    ax2.text(PWR_ELEC_1600G_E2E * 0.94, 2.35, "Matched 200 GB/s\nElectrical (3.16 kW)\n4.9$\\times$–7.8$\\times$ power",
-             fontsize=7.0, color=C_BLACK, ha="right", va="center",
-             bbox=dict(boxstyle="round,pad=0.18", fc="#FFFFFF", ec=C_HBM, lw=0.65))
+    ax2.text(PWR_ELEC_1600G_E2E * 0.94, 2.28, "Matched 200 GB/s\nElectrical (3.16 kW)\n4.9$\\times$–7.8$\\times$ power",
+             fontsize=6.9, color=C_BLACK, ha="right", va="center",
+             bbox=dict(boxstyle="round,pad=0.16", fc="#FFFFFF", ec=C_HBM, lw=0.65))
 
     # Plot points: (x=E2E Power [Switch + NIC Transceivers], y=Peak 128K SLO Goodput)
-    # OptiKV 4:1 (200 GB/s WDM, 10 OCS ports + 40x400G xcvr = 403.9 W)
-    ax2.scatter(PWR_OCS_200G_41_E2E, gp_opt, s=145, marker="*", color=C_OPTIKV_41,
+    ax2.scatter(PWR_OCS_200G_41_E2E, gp_opt41, s=145, marker="*", color=C_OPTIKV_41,
                 edgecolor=C_BLACK, linewidth=0.75, zorder=7)
-    # OptiKV 1:1 (200 GB/s WDM, 16 OCS ports + 64x400G xcvr = 646.2 W)
-    ax2.scatter(PWR_OCS_200G_11_E2E, gp_opt, s=95, marker="o", color=C_OPTIKV,
+    ax2.scatter(PWR_OCS_200G_11_E2E, gp_opt, s=90, marker="o", color=C_OPTIKV,
                 edgecolor=C_BLACK, linewidth=0.75, zorder=6)
-    # Matched 200 GB/s electrical hypothetical ideal
-    ax2.scatter(PWR_ELEC_1600G_E2E, gp_orc, s=46, marker="^", color=C_DRAM,
+    ax2.scatter(PWR_ELEC_400G_E2E, gp_r50, s=62, marker="^", color="#2B6B56",
+                edgecolor=C_BLACK, linewidth=0.65, zorder=6)
+    ax2.scatter(PWR_ELEC_1600G_E2E, gp_orc, s=46, marker="s", color=C_DRAM,
                 edgecolor=C_BLACK, linewidth=0.65, zorder=5)
-    # RDMA+Prefetch (400G electrical, 16 sw + 16 xcvr = 790.4 W)
     ax2.scatter(PWR_ELEC_400G_E2E, gp_rpf, s=55, marker=POLICY_MARKER["rdma_prefetch"],
                 color=C_RDMA_PF, edgecolor=C_BLACK, linewidth=0.65, zorder=5)
-    # RDMA+Routing & CONCUR (400G electrical)
     ax2.scatter(PWR_ELEC_400G_E2E, gp_rrt, s=52, marker=POLICY_MARKER["rdma_routing"],
                 color=C_RDMA, edgecolor=C_BLACK, linewidth=0.65, zorder=5)
     ax2.scatter(PWR_ELEC_400G_E2E * 1.07, gp_rrt - 0.04, s=44, marker=POLICY_MARKER["concur_rdma"],
                 color=C_CONCUR, edgecolor=C_BLACK, linewidth=0.60, zorder=4)
-    # Optical-Naive/Resv (0.00 req/s @ 646 W)
     ax2.scatter(PWR_OCS_200G_11_E2E, 0.03, s=48, marker=POLICY_MARKER["optical_naive"],
                 color=C_NAIVE, edgecolor=C_BLACK, linewidth=0.65, zorder=5)
-    # Local-HBM / NoCache (0.00 req/s @ 790 W)
     ax2.scatter(PWR_ELEC_400G_E2E * 1.04, 0.03, s=46, marker=POLICY_MARKER["local_hbm"],
                 color=C_HBM, edgecolor=C_BLACK, linewidth=0.65, zorder=4)
 
-    gpw_41 = (gp_opt / PWR_OCS_200G_41_E2E) / (gp_rrt / PWR_ELEC_400G_E2E)
-    gpw_11 = (gp_opt / PWR_OCS_200G_11_E2E) / (gp_rrt / PWR_ELEC_400G_E2E)
-    ax2.annotate(f"OptiKV 4:1 (404 W)\n{gp_opt:.2f} req/s ({gpw_41:.1f}$\\times$ E2E/W)",
-                 xy=(PWR_OCS_200G_41_E2E, gp_opt), xytext=(238.0, 2.55),
-                 fontsize=7.2, fontweight="bold", color=C_BLACK,
-                 bbox=dict(boxstyle="round,pad=0.20", fc="#FFFFFF", ec=C_OPTIKV_41, lw=0.80),
+    gpw_41 = (gp_opt41 / PWR_OCS_200G_41_E2E) / (gp_rrt / PWR_ELEC_400G_E2E)
+    gpw_41_r50 = (gp_opt41 / PWR_OCS_200G_41_E2E) / (gp_r50 / PWR_ELEC_400G_E2E)
+    ax2.annotate(f"OptiKV 4:1 (404 W)\n{gp_opt41:.2f} ({gpw_41_r50:.2f}$\\times$ / {gpw_41:.1f}$\\times$)",
+                 xy=(PWR_OCS_200G_41_E2E, gp_opt41), xytext=(228.0, 2.55),
+                 fontsize=6.5, fontweight="bold", color=C_BLACK,
+                 bbox=dict(boxstyle="round,pad=0.15", fc="#FFFFFF", ec=C_OPTIKV_41, lw=0.80),
                  arrowprops=dict(arrowstyle="-|>", color=C_OPTIKV_41, lw=0.95))
-    ax2.annotate(f"OptiKV 1:1 (646 W)\n({gpw_11:.1f}$\\times$ E2E/W)",
-                 xy=(PWR_OCS_200G_11_E2E, gp_opt), xytext=(980.0, 3.38),
-                 fontsize=7.2, fontweight="bold", color=C_BLACK,
-                 bbox=dict(boxstyle="round,pad=0.18", fc="#FFFFFF", ec=C_OPTIKV, lw=0.80),
-                 arrowprops=dict(arrowstyle="-|>", color=C_OPTIKV, lw=0.95))
-    ax2.annotate(f"RDMA+Prefetch\n({gp_rpf:.2f} @ 790 W)",
-                 xy=(PWR_ELEC_400G_E2E, gp_rpf), xytext=(1100.0, 1.62),
-                 fontsize=7.1, color=C_BLACK,
+    ax2.annotate(f"OptiKV 1:1\n(646 W, 50 ms)",
+                 xy=(PWR_OCS_200G_11_E2E, gp_opt), xytext=(450.0, 1.56),
+                 fontsize=6.6, fontweight="bold", color=C_BLACK,
+                 bbox=dict(boxstyle="round,pad=0.14", fc="#FFFFFF", ec=C_OPTIKV, lw=0.75),
+                 arrowprops=dict(arrowstyle="-|>", color=C_OPTIKV, lw=0.90, connectionstyle="arc3,rad=0.14"))
+    ax2.annotate(f"RDMA-50G (400G Line)\n{gp_r50:.2f} @ 790 W (162 ms, 3.25$\\times$)",
+                 xy=(PWR_ELEC_400G_E2E, gp_r50), xytext=(910.0, 3.30),
+                 fontsize=6.5, fontweight="bold", color=C_BLACK,
+                 bbox=dict(boxstyle="round,pad=0.14", fc="#FFFFFF", ec="#2B6B56", lw=0.70),
+                 arrowprops=dict(arrowstyle="-|>", color="#2B6B56", lw=0.90))
+    ax2.annotate(f"RDMA-25G+Pf\n({gp_rpf:.2f} @ 790 W)",
+                 xy=(PWR_ELEC_400G_E2E, gp_rpf), xytext=(1130.0, 1.48),
+                 fontsize=6.8, color=C_BLACK,
                  arrowprops=dict(arrowstyle="-|>", color=C_RDMA_PF, lw=0.85))
-    ax2.annotate(f"RDMA+Rout./CONCUR\n({gp_rrt:.2f} @ 790 W)",
-                 xy=(PWR_ELEC_400G_E2E, gp_rrt), xytext=(1100.0, 0.72),
-                 fontsize=7.0, color=C_BLACK,
+    ax2.annotate(f"RDMA-25G+Rt/CONCUR\n({gp_rrt:.2f} @ 790 W)",
+                 xy=(PWR_ELEC_400G_E2E, gp_rrt), xytext=(1130.0, 0.68),
+                 fontsize=6.7, color=C_BLACK,
                  arrowprops=dict(arrowstyle="-|>", color=C_RDMA, lw=0.85))
     ax2.annotate("Opt-Naive (0.00)",
-                 xy=(PWR_OCS_200G_11_E2E, 0.05), xytext=(240.0, 0.45),
-                 fontsize=6.9, color=C_BLACK,
+                 xy=(PWR_OCS_200G_11_E2E, 0.05), xytext=(238.0, 0.45),
+                 fontsize=6.8, color=C_BLACK,
                  arrowprops=dict(arrowstyle="-|>", color=C_NAIVE, lw=0.85))
     ax2.annotate("HBM/NoCache (0.00)",
                  xy=(PWR_ELEC_400G_E2E * 1.04, 0.05), xytext=(1250.0, 0.14),
-                 fontsize=6.9, color=C_BLACK,
+                 fontsize=6.8, color=C_BLACK,
                  arrowprops=dict(arrowstyle="-|>", color=C_HBM, lw=0.85))
 
     ax2.set_xscale("log")
@@ -930,38 +944,42 @@ def make_fig6_sensitivity() -> None:
     # --- Panel (d): Honest Stacked Switch + Transceiver Power & E2E Goodput/Watt ---
     ax = axes[1, 1]
     gp_opt = float(peak_ld.loc["optikv"])
+    gp_opt41 = float(peak_ld.loc["optikv_4to1"])
+    gp_r50 = float(peak_ld.loc["rdma50_prefetch"])
     gp_rpf = float(peak_ld.loc["rdma_prefetch"])
     gp_rrt = float(peak_ld.loc["rdma_routing"])
     gp_orc = float(peak_ld.loc["oracle_infinite_hbm"])
 
     cfg_lbls = [
-        "Elec. 400G\n(RDMA+Rt)",
-        "Elec. 400G\n(RDMA+Pf)",
+        "Elec. 400G\n(25G Rt)",
+        "Elec. 400G\n(25G Pf)",
+        "Elec. 400G\n(50G Line)",
         "Elec. 1.6T\n(200G Eq.)",
         "OptiKV 1:1\n(200G WDM)",
         "OptiKV 4:1\n(200G WDM)",
     ]
-    sw_w = np.array([16 * P_ELEC_400G_SW, 16 * P_ELEC_400G_SW, 64 * P_ELEC_400G_SW, 16 * P_OCS_MEMS_SW, 10 * P_OCS_MEMS_SW])
-    xcvr_w = np.array([16 * P_XCVR_400G, 16 * P_XCVR_400G, 64 * P_XCVR_400G, 64 * P_XCVR_400G, 40 * P_XCVR_400G])
+    sw_w = np.array([16 * P_ELEC_400G_SW, 16 * P_ELEC_400G_SW, 16 * P_ELEC_400G_SW, 64 * P_ELEC_400G_SW, 16 * P_OCS_MEMS_SW, 10 * P_OCS_MEMS_SW])
+    xcvr_w = np.array([16 * P_XCVR_400G, 16 * P_XCVR_400G, 16 * P_XCVR_400G, 64 * P_XCVR_400G, 64 * P_XCVR_400G, 40 * P_XCVR_400G])
     tot_w = sw_w + xcvr_w
-    # E2E Goodput / kW (= mreq/s/W) on 128K load sweep
+    # E2E Goodput / kW on 128K load sweep (250 ms SLO)
     e2e_gpw_mw = np.array([
         1000.0 * gp_rrt / tot_w[0],
         1000.0 * gp_rpf / tot_w[1],
-        1000.0 * gp_orc / tot_w[2],
-        1000.0 * gp_opt / tot_w[3],
+        1000.0 * gp_r50 / tot_w[2],
+        1000.0 * gp_orc / tot_w[3],
         1000.0 * gp_opt / tot_w[4],
+        1000.0 * gp_opt41 / tot_w[5],
     ])
 
     xc = np.arange(len(cfg_lbls))
     bw = 0.44
     ax.bar(xc, sw_w, width=bw, color=C_RDMA, edgecolor=C_BLACK, lw=0.55, label="Switch ports (W)")
     ax.bar(xc, xcvr_w, width=bw, bottom=sw_w, color=C_RESV, edgecolor=C_BLACK, lw=0.55, hatch="///", label="NIC transceivers (W)")
-    for xi, tw, swv in zip(xc, tot_w, sw_w):
+    for xi, tw in zip(xc, tot_w):
         lbl_p = f"{tw/1e3:.2f} kW" if tw >= 1000 else f"{tw:.0f} W"
-        ax.text(xi, tw + 65, lbl_p, ha="center", va="bottom", fontsize=7.3, fontweight="bold", color=C_BLACK)
-    ax.set_ylim(0, 3850)
-    ax.set_xticks(xc, cfg_lbls, fontsize=7.8)
+        ax.text(xi, tw + 95, lbl_p, ha="center", va="bottom", fontsize=6.9, fontweight="bold", color=C_BLACK)
+    ax.set_ylim(0, 3950)
+    ax.set_xticks(xc, cfg_lbls, fontsize=7.2)
     ax.set_ylabel("8-GPU E2E fabric power (W)")
     ax.set_title("(d) Bandwidth-Matched E2E Power & Efficiency", loc="center", fontsize=10.4)
 
@@ -970,18 +988,22 @@ def make_fig6_sensitivity() -> None:
     ax_r.spines["right"].set_color(C_BLACK)
     ax_r.spines["right"].set_linewidth(0.75)
     ax_r.grid(False)
-    ax_r.plot(xc, e2e_gpw_mw, color=C_OPTIKV, marker="o", ms=5.0, lw=1.65, zorder=6, label="128K E2E Goodput/kW")
+    ax_r.plot(xc, e2e_gpw_mw, color=C_OPTIKV, marker="o", ms=4.8, lw=1.60, zorder=6, label="128K E2E Goodput/kW")
     for xi, gv in zip(xc, e2e_gpw_mw):
-        yoff = 0.55 if xi != 2 else 0.75
-        ax_r.text(xi, gv + yoff, f"{gv:.2f}", ha="center", va="bottom", fontsize=7.5, fontweight="bold",
-                  color=C_BLACK, bbox=dict(boxstyle="round,pad=0.10", fc="#FFFFFF", ec=C_OPTIKV, lw=0.55, alpha=0.92))
-    ax_r.set_ylim(0, 12.6)
+        if xi in (0, 1):
+            ax_r.text(xi, max(0.32, gv - 0.58), f"{gv:.2f}", ha="center", va="top", fontsize=7.0, fontweight="bold",
+                      color=C_BLACK, bbox=dict(boxstyle="round,pad=0.08", fc="#FFFFFF", ec=C_OPTIKV, lw=0.55, alpha=0.95))
+        else:
+            yoff = 0.62 if xi != 3 else 0.72
+            ax_r.text(xi, gv + yoff, f"{gv:.2f}", ha="center", va="bottom", fontsize=7.2, fontweight="bold",
+                      color=C_BLACK, bbox=dict(boxstyle="round,pad=0.10", fc="#FFFFFF", ec=C_OPTIKV, lw=0.55, alpha=0.94))
+    ax_r.set_ylim(0, 12.8)
     ax_r.set_ylabel("128K E2E Goodput / kW (req/s/kW)", color=C_BLACK)
     ax_r.tick_params(axis="y", colors=C_BLACK)
 
     h1, l1 = ax.get_legend_handles_labels()
     h2, l2 = ax_r.get_legend_handles_labels()
-    ax.legend(h1 + h2, l1 + l2, loc="upper left", fontsize=7.0, ncol=1)
+    ax.legend(h1 + h2, l1 + l2, loc="upper left", fontsize=6.8, ncol=1)
 
     fig.tight_layout()
     save_fig(fig, "fig6_reconfig_and_cited_cost")
@@ -1091,54 +1113,64 @@ def make_fig7_ablation() -> None:
 
 def make_fig8_load() -> None:
     df = pd.read_csv(SIM / "exp_load_sweep.csv")
-    fig, axes = plt.subplots(1, 2, figsize=(11.2, 3.75))
+    fig, axes = plt.subplots(1, 2, figsize=(11.2, 3.85))
     pols = [
         "no_cache", "local_hbm", "local_dram", "rdma_routing", "concur_rdma",
-        "rdma_prefetch", "optical_naive", "optical_reservation", "optikv", "oracle_infinite_hbm"
+        "rdma_prefetch", "rdma50_prefetch", "optical_naive", "optical_reservation",
+        "optikv_4to1", "optikv", "oracle_infinite_hbm"
     ]
+    lbl_override = {
+        "rdma_routing": "RDMA-25G+Rt",
+        "rdma_prefetch": "RDMA-25G+Pf",
+        "rdma50_prefetch": "RDMA-50G (400G)",
+        "optikv": "OptiKV (1:1)",
+        "optikv_4to1": "OptiKV (4:1)",
+    }
 
     ax0, ax1 = axes
     for pol in pols:
         sub = df[df["policy"] == pol].sort_values("target_rps")
         if sub.empty:
             continue
-        lw = 1.70 if pol == "optikv" else (1.30 if pol == "oracle_infinite_hbm" else 1.20)
-        ls = "--" if pol == "oracle_infinite_hbm" else "-"
-        ms = 4.4 if pol == "optikv" else (4.5 if pol == "oracle_infinite_hbm" else 3.7)
-        z = 6 if pol == "oracle_infinite_hbm" else (5 if pol == "optikv" else 3)
+        lw = 1.70 if pol == "optikv" else (1.45 if pol in ("optikv_4to1", "rdma50_prefetch") else (1.30 if pol == "oracle_infinite_hbm" else 1.15))
+        ls = "--" if pol in ("oracle_infinite_hbm", "rdma50_prefetch") else ("-." if pol == "optikv_4to1" else "-")
+        ms = 4.4 if pol == "optikv" else (4.2 if pol in ("optikv_4to1", "rdma50_prefetch") else (4.5 if pol == "oracle_infinite_hbm" else 3.5))
+        z = 7 if pol == "oracle_infinite_hbm" else (6 if pol == "optikv" else (5 if pol in ("optikv_4to1", "rdma50_prefetch") else 3))
         ax0.plot(sub["target_rps"], sub["p50_ttft_s"], marker=POLICY_MARKER[pol], ms=ms,
-                 color=POLICY_COLOR[pol], lw=lw, ls=ls, zorder=z, label=POLICY_LABEL[pol])
+                 color=POLICY_COLOR[pol], lw=lw, ls=ls, zorder=z, label=lbl_override.get(pol, POLICY_LABEL[pol]))
         ax1.plot(sub["target_rps"], sub["goodput_rps"], marker=POLICY_MARKER[pol], ms=ms,
                  color=POLICY_COLOR[pol], lw=lw, ls=ls, zorder=z)
 
     slo_s = float(df["slo_ttft_s"].iloc[0]) if "slo_ttft_s" in df.columns and len(df) else 0.25
     slo_lbl = f"{int(round(slo_s*1e3))} ms" if slo_s < 1.0 else f"{slo_s:.1f} s"
-    ax0.axhline(slo_s, color=C_NAIVE, ls=":", lw=1.15, label=f"TTFT SLO ({slo_lbl})")
+    ax0.axhline(slo_s, color=C_NAIVE, ls=":", lw=1.15, label=f"250 ms SLO")
+    ax0.axhline(0.10, color=C_HBM, ls=":", lw=0.95, label="100 ms Interactive")
     ax0.set_yscale("log")
     ax0.set_ylim(0.022, 165.0)
     ax0.set_xlabel("Offered steady-state arrival rate (req/s)")
     ax0.set_ylabel("Median (P50) TTFT (s, log scale)")
     ax0.set_title("(a) Median TTFT Saturation Under Load (128K)", loc="center", fontsize=10.3)
-    ax0.text(31.8, 0.20, "250 ms SLO", ha="right", va="top", fontsize=7.8, fontweight="bold", color=C_BLACK)
+    ax0.text(31.8, 0.275, "250 ms SLO", ha="right", va="bottom", fontsize=7.4, fontweight="bold", color=C_BLACK)
+    ax0.text(31.8, 0.088, "100 ms Interactive (RDMA-50G fails @ 162 ms)", ha="right", va="top", fontsize=7.1, fontweight="bold", color=C_BLACK)
 
     ax1.set_xlabel("Offered steady-state arrival rate (req/s)")
     ax1.set_ylabel(f"SLO goodput (req/s, TTFT $\\leq$ {slo_lbl})")
     ax1.set_title("(b) SLO-Attaining Cluster Goodput Under Load", loc="center", fontsize=10.3)
-    ax1.set_ylim(-0.18, 4.55)
-    # Clean callout at 32 req/s
+    ax1.set_ylim(-0.18, 4.65)
     opt_max = float(df[df["policy"] == "optikv"]["goodput_rps"].max())
+    r50_max = float(df[df["policy"] == "rdma50_prefetch"]["goodput_rps"].max())
     rpf_max = float(df[df["policy"] == "rdma_prefetch"]["goodput_rps"].max())
     rrt_max = float(df[df["policy"] == "rdma_routing"]["goodput_rps"].max())
-    ax1.annotate(f"OptiKV = Oracle: {opt_max:.2f} req/s\n({opt_max/rpf_max:.2f}$\\times$ Prefetch, {opt_max/rrt_max:.2f}$\\times$ Routing)",
-                 xy=(32.0, opt_max), xytext=(15.5, 2.05),
-                 fontsize=7.5, fontweight="bold", color=C_BLACK,
+    ax1.annotate(f"OptiKV 1:1 & 4:1 = Oracle ({opt_max:.2f} @ 50 ms)\nRDMA-50G: {r50_max:.2f} @ 162 ms (3.25$\\times$ slower)\nRDMA-25G: {rrt_max:.2f}–{rpf_max:.2f} ({opt_max/rpf_max:.2f}$\\times$–{opt_max/rrt_max:.2f}$\\times$ lower)",
+                 xy=(32.0, opt_max), xytext=(10.0, 1.55),
+                 fontsize=7.2, fontweight="bold", color=C_BLACK,
                  bbox=dict(boxstyle="round,pad=0.20", fc="#FFFFFF", ec=C_OPTIKV, lw=0.75),
                  arrowprops=dict(arrowstyle="-|>", color=C_OPTIKV, lw=0.95))
 
     handles, labels = ax0.get_legend_handles_labels()
-    fig.legend(handles, labels, loc="upper center", ncol=6, bbox_to_anchor=(0.5, 0.996),
-               fontsize=7.5, frameon=True, edgecolor=C_BLACK, fancybox=False, handlelength=1.6, columnspacing=1.0)
-    fig.tight_layout(rect=[0.0, 0.0, 1.0, 0.855])
+    fig.legend(handles, labels, loc="upper center", ncol=7, bbox_to_anchor=(0.5, 0.996),
+               fontsize=7.0, frameon=True, edgecolor=C_BLACK, fancybox=False, handlelength=1.45, columnspacing=0.75)
+    fig.tight_layout(rect=[0.0, 0.0, 1.0, 0.850])
     save_fig(fig, "fig8_p99_load")
 
 
@@ -1379,8 +1411,8 @@ def make_fig10_live_3090_hil_replay() -> None:
     naive_p50 = float(df_e2e[df_e2e["mode"] == naive_mode_str]["reuse_p50_ms"].iloc[0])
     optikv_p50 = float(df_e2e[df_e2e["mode"] == optikv_mode_str]["reuse_p50_ms"].iloc[0])
     pct_brk = 100.0 * (naive_p50 - optikv_p50) / optikv_p50
-    ax_t.annotate(f"Optical-Naive ({naive_p50:.1f} ms):\n+{pct_brk:.1f}% Law 3 breakout vs. OptiKV ({optikv_p50:.1f} ms)",
-                  xy=(28.5, naive_p50 + 1.0), xytext=(24.9, 310.0),
+    ax_t.annotate(f"Optical-Naive ({_hu1(naive_p50)} ms):\n+{pct_brk:.1f}% Law 3 breakout vs. OptiKV ({_hu1(optikv_p50)} ms)",
+                  xy=(28.5, naive_p50 + 1.0), xytext=(24.2, 330.0),
                   fontsize=7.6, fontweight="bold", color=C_BLACK,
                   bbox=dict(boxstyle="round,pad=0.18", fc="#FFFFFF", ec="none", alpha=0.88),
                   arrowprops=dict(arrowstyle="-|>", color=C_NAIVE, lw=0.95))
@@ -1414,7 +1446,7 @@ def make_fig10_live_3090_hil_replay() -> None:
     ax.set_yscale("log")
     ax.set_ylim(20, 6800)
     for idx_e, (rect, v, sp) in enumerate(zip(b1, p50_e, df_e2e["speedup_vs_lru"].values)):
-        txt = f"{v:.1f} ms\n({sp:.1f}$\\times$)" if sp > 1.05 else f"{v:.0f} ms\n(1.0$\\times$)"
+        txt = f"{_hu1(v)} ms\n({sp:.1f}$\\times$)" if sp > 1.05 else f"{v:.0f} ms\n(1.0$\\times$)"
         ax.text(rect.get_x() + rect.get_width() / 2, v * 1.18, txt, ha="center", va="bottom",
                 fontsize=7.3, color=C_BLACK, fontweight="bold" if idx_e in (0, 3, 4) else "normal")
     ax.set_xticks(x_e, short_names, fontsize=8.2)
@@ -1422,9 +1454,8 @@ def make_fig10_live_3090_hil_replay() -> None:
     ax.set_title("(b) Reuse P50 / P95 Summary (38.0$\\times$ Recovery)", loc="center", fontsize=10.3)
     ax.legend(loc="upper right", fontsize=7.4)
 
-    # --- Panel (c): Unified 45 GB/s Law 3 Overlap Anatomy & Measured MEMS Duty ---
+    # --- Panel (c): Unified 45 GB/s Law 3 Overlap Anatomy (Pure T_prefill,Delta!) & MEMS Duty ---
     ax = fig.add_subplot(gs[1, 1])
-    # Exact 448 MiB KV payload = 469.76 MB -> 10.44 ms @ 45 GB/s (400G optical port)
     kv_45g_ms = (8192 * 57344) / 45e9 * 1e3  # 10.439 ms
     kv_25g_ms = (8192 * 57344) / 25e9 * 1e3  # 18.790 ms
     cats = ["RDMA Pool\n(25 GB/s)", "Optical-Naive\n(45 GB/s, 25 ms)", "OptiKV-Fabric\n(45 GB/s, Ours)"]
@@ -1436,13 +1467,19 @@ def make_fig10_live_3090_hil_replay() -> None:
     xc = np.arange(len(cats))
     b_x = ax.bar(xc - 0.18, xfer_exp, width=0.34, color=[C_RDMA, C_NAIVE, C_OPTIKV], edgecolor=C_BLACK, lw=0.55,
                  label="Critical-path xfer (ms)")
-    ovl_shadow = 0.70 * float(np.median(gt_floor[12:]))
+    # Exact Eq. (4) pure delta-prefill overlap shadow: 0.70 x 36.38 ms = 25.47 ms
+    ovl_shadow = 0.70 * 36.38
     ax.axhline(ovl_shadow, color=C_BLACK, ls="--", lw=1.15,
-               label=f"Law 3 shadow ({ovl_shadow:.1f} ms)")
+               label=f"Eq. (4) shadow ({_hu1(ovl_shadow)} ms)")
     ax.set_ylim(0, 56)
-    for rect, v, note in zip(b_x, xfer_exp, [f"{kv_25g_ms:.1f} ms\n(hidden)", f"{25.0+kv_45g_ms:.1f} ms\n(exposed)", "0.0 ms\n(hidden)"]):
-        ax.text(rect.get_x() + rect.get_width() / 2, v + 1.2, note, ha="center", va="bottom",
-                fontsize=7.3, fontweight="bold", color=C_BLACK)
+    for idx_b, (rect, v, note) in enumerate(zip(b_x, xfer_exp, [f"{kv_25g_ms:.1f} ms\n(hidden)", f"{25.0+kv_45g_ms:.1f} ms\n(+10.0 ms)", "0.0 ms\n(hidden)"])):
+        if idx_b == 0:
+            ax.text(rect.get_x() + rect.get_width() / 2, v * 0.50, note, ha="center", va="center",
+                    fontsize=7.2, fontweight="bold", color=C_BLACK,
+                    bbox=dict(boxstyle="round,pad=0.12", fc="#FFFFFF", ec="none", alpha=0.86))
+        else:
+            ax.text(rect.get_x() + rect.get_width() / 2, v + 1.2, note, ha="center", va="bottom",
+                    fontsize=7.3, fontweight="bold", color=C_BLACK)
 
     ax_d = ax.twinx()
     ax_d.spines["top"].set_visible(False)

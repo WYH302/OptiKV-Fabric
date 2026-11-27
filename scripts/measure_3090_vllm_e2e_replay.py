@@ -307,10 +307,11 @@ def main() -> int:
                             _precise_wait(fab_s)
                             dma_s = _measure_real_kv_h2d_dma_s(host_kv, gpu_kv, dma_stream)
                             r_gpu = _run_vllm_req(llm, SamplingParams, prefixes[s] + suffixes[s][t], max_tokens=1)
-                            # GPUDirect RDMA (25 GB/s = 18.80 ms for 448 MiB) overlapped at alpha=0.70
-                            xfer_s = fab_s
-                            gpu_s = r_gpu["wall_s"]
-                            e2e_ms = (max(xfer_s, 0.70 * gpu_s) + 0.30 * gpu_s) * 1e3
+                            # Exact Eq. (4): only pure calibrated delta-prefill (T_prefill_delta = 36.38 ms at 8K+128)
+                            # overlaps with transfer at alpha=0.70 (shadow = 25.46 ms); first-token/engine overhead is non-overlapped.
+                            t_pref_delta_s = min(r_gpu["wall_s"], 0.03638)
+                            t_non_ovl_s = max(0.0, r_gpu["wall_s"] - t_pref_delta_s)
+                            e2e_ms = (max(fab_s, 0.70 * t_pref_delta_s) + 0.30 * t_pref_delta_s + t_non_ovl_s) * 1e3
                         elif kind == "opt_naive":
                             plan = cal.transfer_sequence(sim_clock, [(s, kv_bytes_8k)], commit=True, src_worker=0)[0]
                             cal.teardown_all()
@@ -318,10 +319,10 @@ def main() -> int:
                             _precise_wait(fab_s)
                             dma_s = _measure_real_kv_h2d_dma_s(host_kv, gpu_kv, dma_stream)
                             r_gpu = _run_vllm_req(llm, SamplingParams, prefixes[s] + suffixes[s][t], max_tokens=1)
-                            # Unified single-bandwidth 45 GB/s GPUDirect optical transfer (25.0 + 10.44 = 35.44 ms)
-                            xfer_s = fab_s
-                            gpu_s = r_gpu["wall_s"]
-                            e2e_ms = (max(xfer_s, 0.70 * gpu_s) + 0.30 * gpu_s) * 1e3
+                            # Unified 45 GB/s GPUDirect optical transfer (25.0 + 10.44 = 35.44 ms) vs pure 25.46 ms prefill shadow
+                            t_pref_delta_s = min(r_gpu["wall_s"], 0.03638)
+                            t_non_ovl_s = max(0.0, r_gpu["wall_s"] - t_pref_delta_s)
+                            e2e_ms = (max(fab_s, 0.70 * t_pref_delta_s) + 0.30 * t_pref_delta_s + t_non_ovl_s) * 1e3
                         else:
                             # OptiKV-Fabric: standing Optical Pool circuit (-1) on the SAME 45 GB/s link +
                             # off-path JIT prefetch launched 0.08s before arrival (fully hidden inside 0.80s pause)
