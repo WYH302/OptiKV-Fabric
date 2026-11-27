@@ -461,11 +461,11 @@ def make_fig2_workload_and_capacity() -> None:
     # --- Panel (b) ---
     ax = axes[0, 1]
     mc_files = [
-        ("Mooncake (n=23,608)", ROOT / "datasets/mooncake-traces/mooncake/train-00000-of-00001.parquet", "input_length", C_OPTIKV, "-"),
-        ("Conversation (n=12,031)", ROOT / "datasets/mooncake-traces/conversation/train-00000-of-00001.parquet", "input_length", C_RDMA, "--"),
-        ("ToolAgent (n=23,608)", ROOT / "datasets/mooncake-traces/toolagent/train-00000-of-00001.parquet", "input_length", C_NAIVE, "-."),
-        ("LMCache Tokenized (n=24,880)", ROOT / "datasets/lmcache-agentic-traces/tokenized_512.parquet", "input_tokens", C_RDMA_PF, "-"),
-        ("FreeInference Week (n=190,544)", ROOT / "datasets/freeinference-agentic-trace/week_2026_08_30/release/2026-08-30_2026-09-05/processed/requests.parquet", "prompt_tokens", C_CONCUR, "-"),
+        ("Mooncake (23.6K)", ROOT / "datasets/mooncake-traces/mooncake/train-00000-of-00001.parquet", "input_length", C_OPTIKV, "-"),
+        ("Conversation (12.0K)", ROOT / "datasets/mooncake-traces/conversation/train-00000-of-00001.parquet", "input_length", C_RDMA, "--"),
+        ("ToolAgent (23.6K)", ROOT / "datasets/mooncake-traces/toolagent/train-00000-of-00001.parquet", "input_length", C_NAIVE, "-."),
+        ("LMCache (24.9K)", ROOT / "datasets/lmcache-agentic-traces/tokenized_512.parquet", "input_tokens", C_RDMA_PF, "-"),
+        ("FreeInference (190.5K)", ROOT / "datasets/freeinference-agentic-trace/week_2026_08_30/release/2026-08-30_2026-09-05/processed/requests.parquet", "prompt_tokens", C_CONCUR, "-"),
     ]
     for label, path, colname, col, ls in mc_files:
         if not path.is_file():
@@ -477,10 +477,11 @@ def make_fig2_workload_and_capacity() -> None:
         qs = np.linspace(0, 1, 600)
         ax.plot(np.quantile(arr, qs), qs, label=label, color=col, linestyle=ls, linewidth=1.35)
     ax.set_xscale("log")
+    ax.set_xlim(1.2e2, 2.5e6)
     ax.set_xlabel("Prompt length (tokens, log scale)")
     ax.set_ylabel("Empirical CDF")
     ax.set_title("(b) Production & Agentic Prompt Lengths", loc="center")
-    ax.legend(loc="upper left", fontsize=7.6)
+    ax.legend(loc="upper left", fontsize=7.0, handlelength=1.6)
 
     # --- Panel (c) ---
     ax = axes[1, 0]
@@ -730,7 +731,7 @@ def make_fig4_main_comparison() -> None:
         "no_cache", "local_hbm", "local_dram", "rdma_routing", "concur_rdma",
         "rdma_prefetch", "optical_naive", "optical_reservation", "optikv"
     ]
-    fig, axes = plt.subplots(2, 2, figsize=(11.0, 6.85))
+    fig, axes = plt.subplots(2, 2, figsize=(11.0, 7.05))
     for ax, (fname, title) in zip(axes.flat, panels):
         df = pd.read_csv(SIM / fname).set_index("policy")
         pols = [p for p in show if p in df.index]
@@ -740,27 +741,36 @@ def make_fig4_main_comparison() -> None:
         p99 = [float(df.loc[p, "p99_ttft_s"]) * 1e3 for p in pols]
         oracle_p50 = float(df.loc["oracle_infinite_hbm", "p50_ttft_s"]) * 1e3
         bcols = [POLICY_BAR_COLOR[p] for p in pols]
-        b1 = ax.bar(x - w / 2, p50, width=w, color=bcols, edgecolor=C_BLACK, lw=0.55, label="P50 TTFT")
-        ax.bar(x + w / 2, p99, width=w, color=bcols, alpha=0.40, edgecolor=C_BLACK, lw=0.55, hatch="//", label="P99 TTFT")
-        ax.axhline(oracle_p50, color=C_BLACK, ls="--", lw=1.05, zorder=5,
-                   label=f"Oracle P50 ({oracle_p50:.1f} ms)" if oracle_p50 < 100 else f"Oracle P50 ({oracle_p50:.0f} ms)")
+        b1 = ax.bar(x - w / 2, p50, width=w, color=bcols, edgecolor=C_BLACK, lw=0.55)
+        ax.bar(x + w / 2, p99, width=w, color=bcols, alpha=0.40, edgecolor=C_BLACK, lw=0.55, hatch="//")
+        ax.axhline(oracle_p50, color=C_BLACK, ls="--", lw=1.05, zorder=5)
         ax.set_yscale("log")
         lbls = [POLICY_LABEL[p] + ("\n(Ours)" if p == "optikv" else "") for p in pols]
         ax.set_xticks(x, lbls, rotation=24, ha="right", fontsize=8.3)
         ax.set_ylabel("TTFT (ms, log scale)")
-        ax.set_title(title, loc="center", fontsize=10.6)
-        ymax = max(p99) * 3.5
-        ymin = max(1.0, min(min(p50), oracle_p50) * 0.50)
+        ax.set_title(title, loc="center", fontsize=10.5)
+        ymax = max(p99) * 3.8
+        ymin = max(1.0, min(min(p50), oracle_p50) * 0.48)
         ax.set_ylim(ymin, ymax)
         for rect, val, pol in zip(b1, p50, pols):
             txt = f"{val/1000:.1f}s" if val >= 1000 else f"{val:.0f}"
             ax.text(
-                rect.get_x() + rect.get_width() / 2, val * 1.16, txt,
-                ha="center", va="bottom", fontsize=7.6, color=C_BLACK,
+                rect.get_x() + rect.get_width() / 2, val * 1.15, txt,
+                ha="center", va="bottom", fontsize=7.5, color=C_BLACK,
                 fontweight="bold" if pol == "optikv" else "normal",
             )
-        ax.legend(loc="upper right", fontsize=7.5)
-    fig.tight_layout()
+        orc_str = f"Oracle P50: {oracle_p50:.1f} ms" if oracle_p50 < 100 else f"Oracle P50: {oracle_p50:.0f} ms"
+        ax.text(0.985, 0.96, orc_str, transform=ax.transAxes, ha="right", va="top",
+                fontsize=7.8, fontweight="bold", color=C_BLACK,
+                bbox=dict(boxstyle="round,pad=0.22", facecolor="white", edgecolor=C_BLACK, lw=0.65))
+    shared_handles = [
+        mpatches.Patch(facecolor=C_NOCACHE, edgecolor=C_BLACK, lw=0.55, label="P50 TTFT (solid bar)"),
+        mpatches.Patch(facecolor=C_NOCACHE, alpha=0.40, edgecolor=C_BLACK, lw=0.55, hatch="//", label="P99 TTFT (hatched bar)"),
+        plt.Line2D([0], [0], color=C_BLACK, ls="--", lw=1.10, label="Oracle P50 Floor (dashed line)"),
+    ]
+    fig.legend(handles=shared_handles, loc="upper center", ncol=3, bbox_to_anchor=(0.5, 0.995),
+               fontsize=8.5, frameon=True, edgecolor=C_BLACK, fancybox=False, handlelength=2.0, columnspacing=1.8)
+    fig.tight_layout(rect=[0.0, 0.0, 1.0, 0.945])
     save_fig(fig, "fig4_main_comparison")
 
 
@@ -1033,7 +1043,7 @@ def make_fig7_ablation() -> None:
 
 def make_fig8_load() -> None:
     df = pd.read_csv(SIM / "exp_load_sweep.csv")
-    fig, axes = plt.subplots(1, 2, figsize=(11.2, 4.30))
+    fig, axes = plt.subplots(1, 2, figsize=(11.2, 4.55))
     pols = [
         "no_cache", "local_hbm", "local_dram", "rdma_routing", "concur_rdma",
         "rdma_prefetch", "optical_naive", "optical_reservation", "optikv", "oracle_infinite_hbm"
@@ -1051,7 +1061,7 @@ def make_fig8_load() -> None:
         ax0.plot(sub["target_rps"], sub["p50_ttft_s"], marker=POLICY_MARKER[pol], ms=ms,
                  color=POLICY_COLOR[pol], lw=lw, ls=ls, zorder=z, label=POLICY_LABEL[pol])
         ax1.plot(sub["target_rps"], sub["goodput_rps"], marker=POLICY_MARKER[pol], ms=ms,
-                 color=POLICY_COLOR[pol], lw=lw, ls=ls, zorder=z, label=POLICY_LABEL[pol])
+                 color=POLICY_COLOR[pol], lw=lw, ls=ls, zorder=z)
 
     slo_s = float(df["slo_ttft_s"].iloc[0]) if "slo_ttft_s" in df.columns and len(df) else 0.25
     slo_lbl = f"{int(round(slo_s*1e3))} ms" if slo_s < 1.0 else f"{slo_s:.1f} s"
@@ -1060,16 +1070,17 @@ def make_fig8_load() -> None:
     ax0.set_ylim(0.022, 165.0)
     ax0.set_xlabel("Offered steady-state arrival rate (req/s)")
     ax0.set_ylabel("Median (P50) TTFT (s, log scale)")
-    ax0.set_title("(a) Median TTFT Saturation Under Load (128K)", loc="center", fontsize=10.6)
-    ax0.legend(loc="center left", bbox_to_anchor=(0.015, 0.57), fontsize=6.6, ncol=2, handlelength=1.5, columnspacing=0.75)
-    ax0.text(31.8, 0.21, "250 ms SLO", ha="right", va="top", fontsize=7.8, fontweight="bold", color=C_BLACK)
+    ax0.set_title("(a) Median TTFT Saturation Under Load (128K)", loc="center", fontsize=10.5)
+    ax0.text(31.8, 0.20, "250 ms SLO", ha="right", va="top", fontsize=7.9, fontweight="bold", color=C_BLACK)
 
     ax1.set_xlabel("Offered steady-state arrival rate (req/s)")
     ax1.set_ylabel(f"SLO goodput (req/s, TTFT $\\leq$ {slo_lbl})")
-    ax1.set_title("(b) SLO-Attaining Cluster Goodput Under Load", loc="center", fontsize=10.6)
-    ax1.legend(loc="upper left", fontsize=7.4, ncol=2)
+    ax1.set_title("(b) SLO-Attaining Cluster Goodput Under Load", loc="center", fontsize=10.5)
 
-    fig.tight_layout()
+    handles, labels = ax0.get_legend_handles_labels()
+    fig.legend(handles, labels, loc="upper center", ncol=6, bbox_to_anchor=(0.5, 0.995),
+               fontsize=7.6, frameon=True, edgecolor=C_BLACK, fancybox=False, handlelength=1.6, columnspacing=1.0)
+    fig.tight_layout(rect=[0.0, 0.0, 1.0, 0.865])
     save_fig(fig, "fig8_p99_load")
 
 
