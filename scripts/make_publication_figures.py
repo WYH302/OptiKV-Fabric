@@ -541,25 +541,7 @@ def make_fig2_workload_and_capacity() -> None:
     ax.set_xlabel("Inter-turn idle gap $\\Delta t_{\\mathrm{gap}}$ (s, log scale)")
     ax.set_ylabel("Empirical CDF")
     ax.set_title("(d) Inter-Turn Pause Windows vs. OCS Switch", loc="center")
-    ax.legend(loc="lower right", fontsize=7.5)
-
-    axins = inset_axes(ax, width="100%", height="100%",
-                       bbox_to_anchor=(0.15, 0.46, 0.43, 0.43),
-                       bbox_transform=ax.transAxes, loc="lower left")
-    axins.plot(lm_q * 1e3, qs, color=C_RDMA_PF, lw=1.35)
-    axins.plot(fi_q * 1e3, qs, color=C_CONCUR, lw=1.35, linestyle="--")
-    axins.axvspan(25.0, 50.0, color=C_NAIVE, alpha=0.24)
-    axins.set_xlim(15.0, 220.0)
-    axins.set_ylim(0.0, 0.34)
-    axins.set_xticks([25, 50, 100, 200])
-    axins.set_yticks([0.0, 0.15, 0.30])
-    axins.set_xlabel("Gap (ms)", fontsize=7.6, labelpad=1.5, color=C_BLACK)
-    axins.set_title("MEMS Window Zoom", fontsize=8.0, fontweight="bold", pad=2.8, color=C_BLACK)
-    _style_inset(axins)
-    rect_z = mpatches.Rectangle((0.015, 0.0), 0.22 - 0.015, 0.34, fill=False, edgecolor=C_NAIVE, lw=0.90, zorder=5)
-    ax.add_patch(rect_z)
-    ax.annotate("", xy=(0.015, 0.34), xytext=(0.008, 0.46),
-                arrowprops=dict(arrowstyle="-", color=C_NAIVE, lw=0.80, ls="--"))
+    ax.legend(loc="lower right", fontsize=7.8)
 
     fig.tight_layout()
     save_fig(fig, "fig2_trace_characterization")
@@ -885,28 +867,10 @@ def make_fig6_sensitivity() -> None:
     ax.set_xlabel("Optical fabric bandwidth (GB/s)")
     ax.set_ylabel("P50 TTFT (ms, log scale)")
     ax.set_title("(b) Optical Bandwidth Scaling (45–800 GB/s)", loc="center", fontsize=10.6)
-    ax.legend(loc="center left", bbox_to_anchor=(0.01, 0.56), fontsize=7.5)
-
-    axins = inset_axes(ax, width="100%", height="100%",
-                       bbox_to_anchor=(0.45, 0.37, 0.52, 0.37),
-                       bbox_transform=ax.transAxes, loc="lower left")
-    for pol in ("optikv", "rdma_prefetch", "rdma_routing"):
-        sub = df_bw[df_bw["policy"] == pol].sort_values("bandwidth_gb_s")
-        axins.plot(sub["bandwidth_gb_s"], sub["p50_ttft_s"] * 1e3, marker=POLICY_MARKER[pol], ms=3.5,
-                   color=POLICY_COLOR[pol], lw=1.45 if pol == "optikv" else 1.15)
-    axins.set_xscale("log")
-    axins.set_xlim(40, 880)
-    axins.set_ylim(25, 145)
-    axins.set_xticks([45, 100, 200, 800], ["45", "100", "200", "800"])
-    axins.xaxis.set_minor_formatter(plt.NullFormatter())
-    axins.set_yticks([40, 80, 120])
-    axins.set_ylabel("TTFT (ms)", fontsize=7.5, labelpad=1.5, color=C_BLACK)
-    axins.set_title("Law 2 Crossover Zoom", fontsize=7.9, fontweight="bold", pad=2.8, color=C_BLACK)
-    _style_inset(axins)
-    rect_bw = mpatches.Rectangle((42, 26), 840 - 42, 145 - 26, fill=False, edgecolor=C_NAIVE, lw=0.90, zorder=5)
-    ax.add_patch(rect_bw)
-    ax.annotate("", xy=(380, 145), xytext=(380, 480),
-                arrowprops=dict(arrowstyle="-", color=C_NAIVE, lw=0.80, ls="--"))
+    ax.legend(loc="center left", bbox_to_anchor=(0.01, 0.59), fontsize=7.6)
+    ax.annotate("Saturates 36.3 ms floor\nat 100–200 GB/s", xy=(100.0, 36.3), xytext=(220.0, 360.0),
+                fontsize=7.8, fontweight="bold", color=C_BLACK,
+                arrowprops=dict(arrowstyle="-|>", color=C_OPTIKV, lw=0.95))
 
     # --- Panel (c) ---
     ax = axes[1, 0]
@@ -1097,30 +1061,8 @@ def make_fig8_load() -> None:
     ax0.set_xlabel("Offered steady-state arrival rate (req/s)")
     ax0.set_ylabel("Median (P50) TTFT (s, log scale)")
     ax0.set_title("(a) Median TTFT Saturation Under Load (128K)", loc="center", fontsize=10.6)
-    ax0.legend(loc="center left", bbox_to_anchor=(0.015, 0.58), fontsize=6.1, ncol=2, handlelength=1.4, columnspacing=0.65)
-
-    axins = inset_axes(ax0, width="100%", height="100%",
-                       bbox_to_anchor=(0.55, 0.53, 0.43, 0.33),
-                       bbox_transform=ax0.transAxes, loc="lower left")
-    for pol in ("rdma_routing", "concur_rdma", "rdma_prefetch", "optikv", "oracle_infinite_hbm"):
-        sub = df[df["policy"] == pol].sort_values("target_rps")
-        sub_z = sub[sub["target_rps"] <= 24.5]
-        lw = 1.50 if pol == "optikv" else (1.15 if pol == "oracle_infinite_hbm" else 1.05)
-        ls = "--" if pol == "oracle_infinite_hbm" else "-"
-        axins.plot(sub_z["target_rps"], sub_z["p50_ttft_s"] * 1e3, marker=POLICY_MARKER[pol], ms=3.2,
-                   color=POLICY_COLOR[pol], lw=lw, ls=ls, zorder=5 if pol == "oracle_infinite_hbm" else 4)
-    axins.axhline(slo_s * 1e3, color=C_NAIVE, ls=":", lw=0.95)
-    axins.set_xlim(0.2, 25.2)
-    axins.set_ylim(18, 385)
-    axins.set_xticks([1, 8, 16, 24])
-    axins.set_yticks([50, 150, 250, 350])
-    axins.set_ylabel("TTFT (ms)", fontsize=7.4, labelpad=1.2, color=C_BLACK)
-    axins.set_title("Sub-SLO Regime Zoom", fontsize=7.8, fontweight="bold", pad=2.5, color=C_BLACK)
-    _style_inset(axins)
-    rect_slo = mpatches.Rectangle((0.4, 0.026), 24.4, 0.39 - 0.026, fill=False, edgecolor=C_NAIVE, lw=0.90, zorder=5)
-    ax0.add_patch(rect_slo)
-    ax0.annotate("", xy=(22.0, 0.39), xytext=(22.0, 2.35),
-                 arrowprops=dict(arrowstyle="-", color=C_NAIVE, lw=0.80, ls="--"))
+    ax0.legend(loc="center left", bbox_to_anchor=(0.015, 0.57), fontsize=6.6, ncol=2, handlelength=1.5, columnspacing=0.75)
+    ax0.text(31.8, 0.21, "250 ms SLO", ha="right", va="top", fontsize=7.8, fontweight="bold", color=C_BLACK)
 
     ax1.set_xlabel("Offered steady-state arrival rate (req/s)")
     ax1.set_ylabel(f"SLO goodput (req/s, TTFT $\\leq$ {slo_lbl})")
@@ -1351,31 +1293,11 @@ def make_fig10_live_3090_hil_replay() -> None:
     ax_t.set_ylabel("Live E2E TTFT (ms, log)")
     ax_t.set_title(f"(a) Qualitative Per-Request Live RTX 3090 Trajectory (N={n_sess}$\\times$8K, {working_gib:.2f} vs. {pool_gib:.2f} GiB HBM)",
                    loc="center", fontsize=10.6)
-    ax_t.legend(loc="lower left", bbox_to_anchor=(0.006, 0.015), fontsize=6.7, ncol=2, handlelength=1.4, columnspacing=0.65)
-
-    axins = inset_axes(ax_t, width="100%", height="100%",
-                       bbox_to_anchor=(0.56, 0.34, 0.42, 0.44),
-                       bbox_transform=ax_t.transAxes, loc="lower left")
-    for mkey, _, mcol, mmk, mls, mlw, mz in mode_specs[1:]:
-        sub = df_req[(df_req["mode"] == mkey) & (df_req["turn"] >= 1)].sort_values(["turn", "session"])
-        axins.plot(np.arange(13, 13 + len(sub)), sub["e2e_ttft_ms"].values,
-                   color=mcol, marker=mmk, ms=2.9, lw=mlw * 0.85, ls=mls, zorder=mz)
-    axins.plot(req_x[12:], gt_floor[12:], color=C_BLACK, ls="--", lw=1.05, zorder=7)
-    axins.text(24.5, 56.3, "Optical-Naive: +22.3% Law 3 breakout", ha="center", va="bottom",
-               fontsize=7.2, fontweight="bold", color=C_BLACK)
-    axins.set_xlim(12.5, 36.5)
-    axins.set_ylim(40.5, 59.5)
-    axins.set_xticks([13, 18, 24, 30, 36])
-    axins.set_yticks([44, 50, 56])
-    axins.set_ylabel("TTFT (ms)", fontsize=7.4, labelpad=1.2, color=C_BLACK,
-                     bbox=dict(facecolor="white", edgecolor="none", pad=0.7))
-    axins.set_title("Turns 1–2 Reuse Zoom (Linear)", fontsize=7.9, fontweight="bold", pad=2.5, color=C_BLACK)
-    _style_inset(axins)
-    axins.set_zorder(10)
-    rect_tr = mpatches.Rectangle((12.6, 36), 23.8, 66 - 36, fill=False, edgecolor=C_NAIVE, lw=0.90, zorder=5)
-    ax_t.add_patch(rect_tr)
-    ax_t.annotate("", xy=(26.0, 66), xytext=(26.0, 290),
-                  arrowprops=dict(arrowstyle="-", color=C_NAIVE, lw=0.80, ls="--"))
+    ax_t.legend(loc="lower left", bbox_to_anchor=(0.006, 0.015), fontsize=7.1, ncol=2, handlelength=1.4, columnspacing=0.65)
+    ax_t.annotate("Optical-Naive (54.9 ms):\n+22.3% Law 3 breakout vs. OptiKV (44.9 ms)",
+                  xy=(28.0, 56.0), xytext=(22.2, 260.0),
+                  fontsize=7.8, fontweight="bold", color=C_BLACK,
+                  arrowprops=dict(arrowstyle="-|>", color=C_NAIVE, lw=0.95))
 
     # --- Panel (b): Reuse P50 & P95 Bar Summary (OptiKV-Fabric at FAR RIGHT) ---
     ax = fig.add_subplot(gs[1, 0])
