@@ -1260,8 +1260,8 @@ def make_fig10_live_3090_hil_replay() -> None:
     working_gib = n_sess * 8192 * 57344 / (1024**3)
     pool_gib = float(df_e2e["kv_pool_gib"].iloc[0]) if "kv_pool_gib" in df_e2e.columns else 3.50
 
-    fig = plt.figure(figsize=(11.2, 6.65))
-    gs = fig.add_gridspec(2, 2, height_ratios=[1.12, 1.0], hspace=0.38, wspace=0.28)
+    fig = plt.figure(figsize=(11.2, 7.65))
+    gs = fig.add_gridspec(2, 2, height_ratios=[1.65, 1.0], hspace=0.34, wspace=0.28)
 
     # --- Panel (a): Qualitative Per-Request Live RTX 3090 Silicon Trajectory ---
     ax_t = fig.add_subplot(gs[0, :])
