@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Hardware-in-the-Loop (HIL) Live vLLM 0.34.0 End-to-End Prototype Replay on NVIDIA RTX 3090 24 GB.
 
-Default mode reproduces the published N=12, W=6, gpu_mem=0.78 (enforce_eager=True) HIL replay
-(5.25 GiB active KV working set vs. 3.01 GiB / 880-block paged HBM pool).
-Pass `--dedicated` on a 100%-idle RTX 3090 to run N=14, W=7, gpu_mem=0.84 with CUDA graphs enabled.
+Default mode reproduces the published dedicated idle-GPU N=12, W=6, gpu_mem=0.80 (enforce_eager=True) HIL replay
+(5.25 GiB active KV working set vs. 3.50 GiB / 1,024-block paged HBM pool).
+Pass `--shared-gpu` if another process occupies part of VRAM (`gpu_mem=0.78`, `flush_cnt=9`).
 
 Compares 5 real serving modes on live vLLM 0.34.0 + real 448 MiB CUDA PCIe Gen4 KV DMA:
   1. Live vLLM (Local-HBM LRU)          : Unmanaged round-robin N sessions -> real HBM capacity cliff!
@@ -91,17 +91,24 @@ def _run_vllm_req(llm, SamplingParams, token_ids: list[int], max_tokens: int = 1
 def main() -> int:
     parser = argparse.ArgumentParser(description="Live RTX 3090 vLLM 0.34.0 HIL E2E Replay")
     parser.add_argument(
+        "--shared-gpu",
+        action="store_true",
+        help="Use lower VRAM cap (gpu_mem=0.78, flush_cnt=9) if sharing the GPU.",
+    )
+    parser.add_argument(
         "--dedicated",
         action="store_true",
-        help="Run 100%-idle dedicated GPU profile (gpu_mem=0.84, CUDA graphs, N=14, W=7).",
+        help="Explicit alias for the default dedicated-GPU profile (gpu_mem=0.80, flush_cnt=10).",
     )
     args = parser.parse_args()
 
-    gpu_mem = 0.84 if args.dedicated else 0.78
-    n_sessions = 14 if args.dedicated else 12
-    wave_size = 7 if args.dedicated else 6
-    flush_cnt = 11 if args.dedicated else 9
-    extra_cfg = None if args.dedicated else {"enforce_eager": True}
+    gpu_mem = 0.78 if args.shared_gpu else 0.80
+    n_sessions = 12
+    wave_size = 6
+    flush_cnt = 9 if args.shared_gpu else 10
+    # enforce_eager=True avoids vLLM's 3.66 GiB FULL_AND_PIECEWISE CUDA-graph reservation,
+    # keeping >3.0 GiB paged HBM KV cache alongside the live 448 MiB CUDA DMA staging tensor.
+    extra_cfg = {"enforce_eager": True}
 
     t_all = time.perf_counter()
     RES.mkdir(parents=True, exist_ok=True)
@@ -129,6 +136,13 @@ def main() -> int:
     except Exception:
         pass
     print(f"Detected vLLM KV pool: blocks={kv_pool_blocks}, tokens={kv_pool_tokens}, GiB={kv_pool_gib}", flush=True)
+    if kv_pool_tokens > 0:
+        assert kv_pool_tokens >= wave_size * 8192 + 2048, (
+            f"KV pool ({kv_pool_tokens} tokens) too small to hold wave_size={wave_size} x 8192!"
+        )
+        assert kv_pool_tokens < n_sessions * 8192 - 4096, (
+            f"KV pool ({kv_pool_tokens} tokens) too large to trigger N={n_sessions} overflow cliff!"
+        )
 
     try:
         # Allocate real 8K-token Qwen2.5-7B BF16 KV buffer (448 MiB = 28L x 2 x 4 x 8192 x 128 x 2B)
@@ -357,9 +371,9 @@ def main() -> int:
             p_ids = bench_3090.build_ids(tokenizer, plen, salt=81000 + s * 10)
             s_a = bench_3090.build_ids(tokenizer, slen, salt=81000 + s * 10 + 1)
             s_b = bench_3090.build_ids(tokenizer, slen, salt=81000 + s * 10 + 2)
-            # First run cold on p_ids + s_b after flushing
-            _flush_apc(50 + s)
+            # Unique salt per session guarantees 0 cached tokens on cold run (verified by assert)
             r_cold = _run_vllm_req(llm, SamplingParams, p_ids + s_b, max_tokens=16)
+            assert r_cold["cached"] == 0, f"Expected cold run (0 cached), got {r_cold['cached']}"
             # Flush, warm p_ids + s_a, then run hot APC on p_ids + s_b
             _flush_apc(70 + s)
             _run_vllm_req(llm, SamplingParams, p_ids + s_a, max_tokens=1)
