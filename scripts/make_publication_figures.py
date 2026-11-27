@@ -219,135 +219,185 @@ def _hu1(val: float) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Figure 1: Top-Venue 3-Panel Teaser (Panel (b) Architecture Preserved Verbatim!)
+# Figure 1: Top-Venue 3-Panel Teaser (Aligned Gantt, Clean Bus Arch, Airy Pareto)
 # ---------------------------------------------------------------------------
 
 def make_fig1_teaser() -> None:
     df_load = pd.read_csv(SIM / "exp_load_sweep.csv")
     peak = df_load.groupby("policy")["goodput_rps"].max()
 
-    fig = plt.figure(figsize=(11.8, 3.85))
-    gs = fig.add_gridspec(1, 3, width_ratios=[1.12, 1.24, 1.14], wspace=0.25)
+    fig = plt.figure(figsize=(13.2, 4.25))
+    gs = fig.add_gridspec(1, 3, width_ratios=[1.20, 1.18, 1.18], wspace=0.20)
 
-    # --- Panel (a): Intuition Contrast ---
+    # -----------------------------------------------------------------------
+    # Panel (a): Time-Aligned Gantt Contrast (Zero Overflow, Exact Geometry)
+    # -----------------------------------------------------------------------
     ax0 = fig.add_subplot(gs[0])
-    ax0.set_xlim(0, 10)
-    ax0.set_ylim(0, 10)
+    ax0.set_xlim(0.0, 10.0)
+    ax0.set_ylim(0.0, 10.0)
     ax0.axis("off")
-    ax0.set_title("(a) Optical Thrashing vs. Pause Hiding", loc="center", fontsize=10.8)
+    ax0.set_title("(a) Optical Thrashing vs. Pause Hiding", loc="center", fontsize=11.0, pad=7.5)
 
-    def tbox(ax, x, y, w, h, text, fc, ec=C_BLACK, fs=7.1, bold=False, lw=0.80):
+    def rbox(ax, x, y, w, h, text, fc, ec=C_BLACK, fs=7.0, bold=False, lw=0.85, ls="-", rad=0.14):
         p = mpatches.FancyBboxPatch(
-            (x, y), w, h, boxstyle="round,pad=0.05,rounding_size=0.14",
-            facecolor=fc, edgecolor=ec, linewidth=lw
+            (x, y), w, h, boxstyle=f"round,pad=0.0,rounding_size={rad}",
+            facecolor=fc, edgecolor=ec, linewidth=lw, linestyle=ls, zorder=3
         )
         ax.add_patch(p)
-        ax.text(x + w / 2, y + h / 2, text, ha="center", va="center",
-                fontsize=fs, color=C_BLACK, fontweight="bold" if bold else "normal")
+        if text:
+            ax.text(x + w / 2.0, y + h / 2.0, text, ha="center", va="center",
+                    fontsize=fs, color=C_BLACK, fontweight="bold" if bold else "normal",
+                    linespacing=1.12, zorder=4)
 
-    bg_top = mpatches.FancyBboxPatch((0.05, 5.42), 9.90, 4.25, boxstyle="round,pad=0.07,rounding_size=0.18",
-                                     facecolor="#FFF8F4", edgecolor=C_NAIVE, linewidth=0.95, linestyle="--")
-    ax0.add_patch(bg_top)
-    ax0.text(0.28, 9.28, "Conventional: Optical-Naive ($\\tau\\approx 0$ Assumption)",
-             fontsize=7.3, fontweight="bold", color=C_BLACK, ha="left", va="center")
+    # Subtle outer lane containers (pad=0.0 => exact coordinates!)
+    ax0.add_patch(mpatches.FancyBboxPatch(
+        (0.05, 5.28), 9.90, 4.42, boxstyle="round,pad=0.0,rounding_size=0.22",
+        facecolor="#FFF9F5", edgecolor=C_NAIVE, linewidth=0.95, linestyle="--", zorder=1
+    ))
+    ax0.add_patch(mpatches.FancyBboxPatch(
+        (0.05, 0.25), 9.90, 4.55, boxstyle="round,pad=0.0,rounding_size=0.22",
+        facecolor="#F5FAFE", edgecolor=C_OPTIKV, linewidth=1.05, zorder=1
+    ))
 
-    tbox(ax0, 0.25, 7.25, 1.48, 1.32, "Turn\n$k{-}1$", P_GRAY, C_BLACK, fs=7.0)
-    tbox(ax0, 1.88, 7.25, 2.55, 1.32, "Agent Pause\n(0.71–2.22 s)\nOCS Idle", "#FFFFFF", "#777777", fs=6.9)
-    tbox(ax0, 4.58, 7.25, 2.50, 1.32, "MEMS Reconfig\n25–50 ms Stall\n(Thrash)", P_VERM, C_NAIVE, fs=6.8, bold=True)
-    tbox(ax0, 7.22, 7.25, 1.18, 1.32, "KV\nXfer", P_AMBER, C_RDMA, fs=6.9)
-    tbox(ax0, 8.54, 7.25, 1.22, 1.32, "Turn $k$\nPrefill", P_GRAY, C_BLACK, fs=6.8)
+    # Top lane header + compact status pill (wide open separation from dotted line!)
+    ax0.text(0.28, 9.26, "Optical-Naive ($\\tau \\approx 0$)",
+             fontsize=7.6, fontweight="bold", color=C_BLACK, ha="left", va="center", zorder=4)
+    rbox(ax0, 6.12, 8.95, 3.60, 0.58, "Duty 3.8–13.1% | 13.9 s", P_VERM, C_NAIVE, fs=6.6, bold=True, lw=0.70, rad=0.12)
 
-    ax0.annotate("Turn $k$ arrives", xy=(4.58, 7.15), xytext=(2.40, 6.18),
-                 ha="center", va="top", fontsize=7.1, fontweight="bold", color=C_BLACK,
-                 arrowprops=dict(arrowstyle="-|>", color=C_NAIVE, lw=1.0, connectionstyle="arc3,rad=-0.12"))
-    ax0.annotate("", xy=(9.76, 6.66), xytext=(4.68, 6.66),
-                 arrowprops=dict(arrowstyle="<->", color=C_NAIVE, lw=1.05))
-    ax0.text(7.35, 5.98, "Exposed Critical Path\nDuty 3.8–13.1% | 13.9 s",
-             ha="center", va="center", fontsize=7.1, fontweight="bold", color=C_BLACK)
+    # Bottom lane header + compact status pill (wide open separation from dotted line!)
+    ax0.text(0.28, 4.38, "OptiKV-Fabric (Ours)",
+             fontsize=7.6, fontweight="bold", color=C_BLACK, ha="left", va="center", zorder=4)
+    rbox(ax0, 6.12, 4.07, 3.60, 0.58, "Duty 76–96% | 36 ms", P_BLUE, C_OPTIKV, fs=6.6, bold=True, lw=0.70, rad=0.12)
 
-    bg_bot = mpatches.FancyBboxPatch((0.05, 0.30), 9.90, 4.55, boxstyle="round,pad=0.07,rounding_size=0.18",
-                                     facecolor="#F4FAFF", edgecolor=C_OPTIKV, linewidth=1.05)
-    ax0.add_patch(bg_bot)
-    ax0.text(0.30, 4.46, "OptiKV-Fabric (Ours): Port Calendar + GapFetch",
-             fontsize=7.5, fontweight="bold", color=C_BLACK, ha="left", va="center")
+    # Shared vertical arrival alignment guide at x = 5.92 (broken cleanly around headers & captions!)
+    x_arr = 5.92
+    ax0.plot([x_arr, x_arr], [6.52, 8.68], color=C_BLACK, linestyle=":", linewidth=1.0, zorder=2)
+    ax0.plot([x_arr, x_arr], [5.38, 6.52], color=C_BLACK, linestyle=":", linewidth=1.0, zorder=2)
+    ax0.plot([x_arr, x_arr], [1.55, 3.88], color=C_BLACK, linestyle=":", linewidth=1.0, zorder=2)
+    ax0.plot([x_arr, x_arr], [3.88, 4.70], color=C_BLACK, linestyle=":", linewidth=1.0, zorder=2)
+    ax0.text(x_arr, 5.04, "Turn $k$ arrives", ha="center", va="center",
+             fontsize=7.0, fontweight="bold", color=C_BLACK,
+             bbox=dict(boxstyle="round,pad=0.14", fc="#FFFFFF", ec=C_BLACK, lw=0.65), zorder=5)
 
-    tbox(ax0, 0.25, 2.42, 1.48, 1.35, "Turn\n$k{-}1$", P_GRAY, C_BLACK, fs=7.0)
-    tbox(ax0, 1.88, 2.42, 1.98, 1.35, "GapFetch\nPre-Switch\n(Hidden)", P_SKY, C_OPTIKV, fs=6.8, bold=True)
-    tbox(ax0, 4.00, 2.42, 2.38, 1.35, "OCS Burst\nPrefetch\n(In Pause)", P_BLUE, C_OPTIKV, fs=6.8, bold=True)
-    tbox(ax0, 6.52, 2.42, 1.48, 1.35, "Warm\nHBM", P_GREEN, C_RDMA_PF, fs=6.9, bold=True)
-    tbox(ax0, 8.14, 2.42, 1.62, 1.35, "Turn $k$\n$\\Delta$-Prefill", P_BLUE, C_OPTIKV, fs=6.9, bold=True)
+    # Top lane Gantt segments (y = 6.72..8.44, h = 1.72, generous horizontal margins!)
+    y_t, h_b = 6.72, 1.72
+    rbox(ax0, 0.25, y_t, 0.96, h_b, "Turn\n$k{-}1$", P_GRAY, "#555555", fs=6.6)
+    rbox(ax0, 1.31, y_t, 4.50, h_b, "Agent Pause (0.71–2.22 s)\nOCS Idle", "#FFFFFF", "#888888", fs=6.9, ls="--")
+    rbox(ax0, 6.03, y_t, 1.54, h_b, "MEMS\n25–50 ms", P_VERM, C_NAIVE, fs=6.6, bold=True)
+    rbox(ax0, 7.65, y_t, 0.88, h_b, "KV\nXfer", P_AMBER, C_RDMA, fs=6.6)
+    rbox(ax0, 8.61, y_t, 1.13, h_b, "Turn $k$\nPrefill", P_GRAY, "#555555", fs=6.6)
 
-    ax0.annotate("Turn $k$ arrives", xy=(8.14, 2.32), xytext=(8.22, 1.15),
-                 ha="center", va="top", fontsize=7.1, fontweight="bold", color=C_BLACK,
-                 arrowprops=dict(arrowstyle="-|>", color=C_OPTIKV, lw=1.05))
-    ax0.annotate("", xy=(9.76, 1.92), xytext=(8.24, 1.92),
-                 arrowprops=dict(arrowstyle="<->", color=C_OPTIKV, lw=1.1))
-    ax0.text(3.25, 1.12, "0 ms Critical-Path Switch\nDuty 76–96% (1:1) | 36 ms (=Oracle)",
-             ha="center", va="center", fontsize=6.9, fontweight="bold", color=C_BLACK)
+    # Top lane critical-path dimension bar (cleanly inside right margin!)
+    ax0.annotate("", xy=(9.74, 6.24), xytext=(6.03, 6.24),
+                 arrowprops=dict(arrowstyle="<->", color=C_NAIVE, lw=1.15), zorder=4)
+    ax0.text(7.88, 5.74, "Exposed Critical Path", ha="center", va="center",
+             fontsize=7.0, fontweight="bold", color=C_BLACK, zorder=4)
 
-    # --- Panel (b): Unified 3-Pillar Architecture Diagram (PRESERVED VERBATIM) ---
+    # Bottom lane Gantt segments (y = 1.84..3.56, h = 1.72, generous internal padding!)
+    y_b = 1.84
+    rbox(ax0, 0.25, y_b, 0.96, h_b, "Turn\n$k{-}1$", P_GRAY, "#555555", fs=6.6)
+    rbox(ax0, 1.31, y_b, 1.54, h_b, "Pre-Switch\n(Hidden)", P_SKY, C_OPTIKV, fs=6.5, bold=True)
+    rbox(ax0, 2.95, y_b, 1.62, h_b, "OCS Burst\nPrefetch", P_BLUE, C_OPTIKV, fs=6.5, bold=True)
+    rbox(ax0, 4.67, y_b, 1.14, h_b, "Warm\nHBM", P_GREEN, C_RDMA_PF, fs=6.5, bold=True)
+    rbox(ax0, 6.03, y_b, 1.38, h_b, "Turn $k$\n$\\Delta$-Prefill", P_BLUE, C_OPTIKV, fs=6.6, bold=True, lw=1.15)
+
+    # Bottom lane saved-time callout cleanly in open right whitespace [7.52..9.74]
+    ax0.annotate("", xy=(9.74, 2.70), xytext=(7.52, 2.70),
+                 arrowprops=dict(arrowstyle="<->", color=C_RDMA_PF, lw=1.15, ls="--"), zorder=4)
+    ax0.text(8.63, 3.16, "Latency Saved", ha="center", va="center",
+             fontsize=6.9, fontweight="bold", color=C_BLACK, zorder=4)
+    ax0.text(8.63, 2.22, "(= Oracle)", ha="center", va="center",
+             fontsize=6.8, color=C_BLACK, zorder=4)
+
+    # Bottom lane dimension brackets (ZERO overlap!)
+    ax0.annotate("", xy=(5.81, 1.32), xytext=(1.31, 1.32),
+                 arrowprops=dict(arrowstyle="<->", color=C_OPTIKV, lw=1.05), zorder=4)
+    ax0.text(3.56, 0.80, "Hidden Inside Pause", ha="center", va="center",
+             fontsize=7.0, fontweight="bold", color=C_BLACK, zorder=4)
+    ax0.annotate("", xy=(7.41, 1.32), xytext=(6.03, 1.32),
+                 arrowprops=dict(arrowstyle="<->", color=C_OPTIKV, lw=1.15), zorder=4)
+    ax0.text(7.25, 0.80, "0 ms Switch", ha="center", va="center",
+             fontsize=7.0, fontweight="bold", color=C_BLACK, zorder=4)
+
+    # -----------------------------------------------------------------------
+    # Panel (b): Unified 3-Pillar Control Plane (Exact Gaps, Zero-Crossing Bus)
+    # -----------------------------------------------------------------------
     ax1 = fig.add_subplot(gs[1])
-    ax1.set_xlim(0, 10)
-    ax1.set_ylim(0, 10)
+    ax1.set_xlim(0.0, 10.0)
+    ax1.set_ylim(0.0, 10.0)
     ax1.axis("off")
-    ax1.set_title("(b) Unified OptiKV-Fabric Control Plane", loc="center", fontsize=10.8)
+    ax1.set_title("(b) Unified OptiKV-Fabric Control Plane", loc="center", fontsize=11.0, pad=7.5)
 
-    def abox(xy, w, h, text, fc, ec=C_BLACK, fs=7.0, bold=False, lw=1.05):
-        patch = mpatches.FancyBboxPatch(
-            xy, w, h, boxstyle="round,pad=0.08,rounding_size=0.18",
-            facecolor=fc, edgecolor=ec, linewidth=lw
-        )
-        ax1.add_patch(patch)
-        ax1.text(xy[0] + w / 2, xy[1] + h / 2, text, ha="center", va="center",
-                 fontsize=fs, color=C_BLACK, fontweight="bold" if bold else "normal")
-
-    def aarrow(p1, p2, color=C_BLACK, rad=0.0, lw=1.2):
-        ax1.annotate("", xy=p2, xytext=p1,
-                     arrowprops=dict(arrowstyle="-|>", color=color, lw=lw,
-                                     connectionstyle=f"arc3,rad={rad}"))
-
-    abox((0.15, 8.50), 9.70, 1.12,
+    # Layer 1: Workload + Roofline Laws
+    rbox(ax1, 0.15, 8.55, 9.70, 1.15,
          "Agentic Sessions (Prefix Hashes & Gaps $\\Delta t_{\\mathrm{gap}}$)\nGoverned by Roofline Crossover Laws 1–3",
-         P_GRAY, C_BLACK, fs=7.2, bold=True)
+         P_GRAY, "#444444", fs=7.3, bold=True, lw=0.95, rad=0.16)
 
-    abox((0.35, 6.40), 9.30, 1.38,
-         "Single State Primitive: OCS Port Calendar\nCircuit State, Release $t_{\\mathrm{free}}$ & Latching ($\\tau_{\\mathrm{eff}}{=}0$)",
-         P_BLUE, C_OPTIKV, fs=7.3, bold=True, lw=1.4)
+    # Layer 2: Central State Primitive (OCS Port Calendar)
+    rbox(ax1, 0.30, 6.60, 9.40, 1.35,
+         "Single State Primitive: OCS Port Calendar\nBipartite Matching $\\mathbf{A}(t)$, Release $t_{\\mathrm{free}}$ & Latching ($\\tau_{\\mathrm{eff}}{=}0$)",
+         P_BLUE, C_OPTIKV, fs=7.3, bold=True, lw=1.35, rad=0.16)
 
-    abox((0.10, 3.22), 3.08, 2.38,
+    # Layer 3: Three Cohesive Modules (exact 0.22 gaps, pad=0.0)
+    mod_w, mod_y, mod_h = 3.08, 3.48, 2.48
+    rbox(ax1, 0.15, mod_y, mod_w, mod_h,
          "OptiRoute\n(Sec. III-B)\nStanding-Circuit\nCo-Routing &\nExact Abort",
-         P_SKY, C_OPTIKV, fs=6.9, bold=True)
-    abox((3.46, 3.22), 3.08, 2.38,
+         P_SKY, C_OPTIKV, fs=7.0, bold=True, lw=1.0, rad=0.16)
+    rbox(ax1, 3.46, mod_y, mod_w, mod_h,
          "GapFetch\n(Sec. III-C)\nCausal EWMA\nPrefetch &\nIn-Flight Join",
-         P_GREEN, C_RDMA_PF, fs=6.9, bold=True)
-    abox((6.82, 3.22), 3.08, 2.38,
+         P_GREEN, C_RDMA_PF, fs=7.0, bold=True, lw=1.0, rad=0.16)
+    rbox(ax1, 6.77, mod_y, mod_w, mod_h,
          "PrefixKeep\n(Sec. III-D)\n2nd-Obs Filter,\nPrefix-GDSF &\nPinning",
-         P_AMBER, C_RDMA, fs=6.9, bold=True)
+         P_AMBER, C_RDMA, fs=7.0, bold=True, lw=1.0, rad=0.16)
 
-    tier_y, tier_h, tier_w = 0.30, 2.02, 1.84
+    # Layer 4: Five Storage Tiers (exact 0.16 gaps, pad=0.0 -> ZERO overlapping borders!)
+    tier_y, tier_h, tier_w = 0.28, 2.02, 1.81
+    tier_xs = [0.15 + i * (tier_w + 0.1625) for i in range(5)]
     tiers = [
-        (0.10, "T1: HBM\nPinned\nHot Tier", P_BLUE, C_OPTIKV),
-        (2.09, "T2: DRAM\n26–50\nGB/s Spill", P_AMBER, C_RDMA),
-        (4.08, "T3: SSD\nNVMe\nCold Tier", P_GRAY, C_HBM),
-        (6.07, "T4: Peer\nDirect\nOCS Hop", P_SKY, C_OPTIKV),
-        (8.06, "T5: Pool\n45–800\nGB/s OCS", P_GREEN, C_RDMA_PF),
+        ("T1: HBM\nPinned\nHot Tier", P_BLUE, C_OPTIKV, True),
+        ("T2: DRAM\n26–50\nGB/s Spill", P_AMBER, C_RDMA, False),
+        ("T3: SSD\nNVMe\nCold Tier", P_GRAY, "#555555", False),
+        ("T4: Peer\nDirect\nOCS Hop", P_SKY, C_OPTIKV, False),
+        ("T5: Pool\n45–800\nGB/s OCS", P_GREEN, C_RDMA_PF, True),
     ]
-    for tx, tlbl, tfc, tec in tiers:
-        abox((tx, tier_y), tier_w, tier_h, tlbl, tfc, tec, fs=6.6, bold=(tx in (0.10, 8.06)))
+    for tx, (tlbl, tfc, tec, is_b) in zip(tier_xs, tiers):
+        rbox(ax1, tx, tier_y, tier_w, tier_h, tlbl, tfc, tec, fs=6.7, bold=is_b, lw=1.0, rad=0.15)
 
-    aarrow((5.0, 8.42), (5.0, 7.88), C_BLACK, lw=1.25)
-    aarrow((2.8, 6.32), (1.64, 5.70), C_OPTIKV, lw=1.2)
-    aarrow((5.0, 6.32), (5.0, 5.70), C_RDMA_PF, lw=1.2)
-    aarrow((7.2, 6.32), (8.36, 5.70), C_RDMA, lw=1.2)
+    # Clean orthogonal connectors (ZERO crossing spaghetti!)
+    def varrow(p1, p2, color=C_BLACK, lw=1.15):
+        ax1.annotate("", xy=p2, xytext=p1,
+                     arrowprops=dict(arrowstyle="-|>", color=color, lw=lw, shrinkA=0, shrinkB=0), zorder=4)
 
-    aarrow((1.02, 3.12), (1.02, 2.42), C_OPTIKV, lw=1.15)
-    aarrow((2.40, 3.12), (3.00, 2.42), C_RDMA, lw=1.05)
-    aarrow((5.00, 3.12), (8.98, 2.42), C_RDMA_PF, rad=-0.08, lw=1.2)
-    aarrow((4.60, 3.12), (1.42, 2.42), C_OPTIKV, rad=0.10, lw=1.2)
-    aarrow((8.36, 3.12), (5.00, 2.42), C_HBM, rad=-0.05, lw=1.05)
-    aarrow((7.55, 3.12), (6.99, 2.42), C_OPTIKV, lw=1.05)
+    # Layer 1 -> Layer 2
+    varrow((5.00, 8.55), (5.00, 7.98), C_BLACK, lw=1.25)
 
-    # --- Panel (c): Honest End-to-End Performance-Power Pareto Frontier ---
+    # Layer 2 -> Layer 3 (clean orthogonal fan-out bar at y = 6.28)
+    y_topbus = 6.28
+    ax1.plot([5.00, 5.00], [6.60, y_topbus], color=C_OPTIKV, lw=1.15, zorder=2)
+    ax1.plot([1.69, 8.31], [y_topbus, y_topbus], color=C_OPTIKV, lw=1.15, zorder=2)
+    varrow((1.69, y_topbus), (1.69, mod_y + mod_h + 0.02), C_OPTIKV, lw=1.15)
+    varrow((5.00, y_topbus), (5.00, mod_y + mod_h + 0.02), C_RDMA_PF, lw=1.15)
+    varrow((8.31, y_topbus), (8.31, mod_y + mod_h + 0.02), C_RDMA, lw=1.15)
+
+    # Layer 3 -> Layer 4 (clean orthogonal five-tier coordination bus at y = 2.88)
+    y_bus = 2.88
+    ax1.plot([1.055, 8.945], [y_bus, y_bus], color="#333333", lw=1.35, zorder=2)
+    ax1.text(5.00, y_bus, " Five-Tier Lossless Data & Control Bus ", ha="center", va="center",
+             fontsize=6.5, fontweight="bold", color=C_BLACK,
+             bbox=dict(boxstyle="round,pad=0.12", fc="#FFFFFF", ec="#888888", lw=0.60), zorder=5)
+    # 3 module stems into bus
+    ax1.plot([1.69, 1.69], [mod_y, y_bus], color=C_OPTIKV, lw=1.15, zorder=2)
+    ax1.plot([5.00, 5.00], [mod_y, y_bus + 0.18], color=C_RDMA_PF, lw=1.15, zorder=2)
+    ax1.plot([8.31, 8.31], [mod_y, y_bus], color=C_RDMA, lw=1.15, zorder=2)
+    # 5 clean vertical drops from bus into T1..T5 centers
+    tier_cols = [C_OPTIKV, C_RDMA, "#555555", C_OPTIKV, C_RDMA_PF]
+    for tx, tcol in zip(tier_xs, tier_cols):
+        cx = tx + tier_w / 2.0
+        varrow((cx, y_bus - (0.18 if abs(cx - 5.0) < 0.5 else 0.0)), (cx, tier_y + tier_h + 0.02), tcol, lw=1.10)
+
+    # -----------------------------------------------------------------------
+    # Panel (c): Uncluttered, Airy End-to-End Performance-Power Pareto Frontier
+    # -----------------------------------------------------------------------
     ax2 = fig.add_subplot(gs[2])
     gp_opt = float(peak.loc["optikv"])
     gp_opt41 = float(peak.loc["optikv_4to1"])
@@ -356,29 +406,28 @@ def make_fig1_teaser() -> None:
     gp_rpf = float(peak.loc["rdma_prefetch"])
     gp_rrt = float(peak.loc["rdma_routing"])
 
-    # Pareto region (upper-left: high goodput, low E2E switch+transceiver power)
-    ax2.fill_between([220.0, 720.0], [3.15, 3.15], [4.75, 4.75], color=P_BLUE, alpha=0.55, zorder=0)
-    ax2.text(235.0, 4.62, "Pareto-Optimal Region", fontsize=7.5, fontweight="bold", color=C_BLACK, ha="left", va="top")
+    # Soft Pareto-optimal region (upper-left)
+    ax2.fill_between([145.0, 720.0], [3.20, 3.20], [4.90, 4.90], color=P_BLUE, alpha=0.50, zorder=0)
+    ax2.text(165.0, 4.74, "Pareto-Optimal", fontsize=7.6, fontweight="bold", color=C_BLACK, ha="left", va="top")
 
-    # Oracle bound line
+    # Oracle bound horizontal line
     ax2.axhline(gp_orc, color=C_BLACK, ls="--", lw=1.05, zorder=2)
-    ax2.text(3980.0, gp_orc + 0.11, f"Oracle ({gp_orc:.2f} req/s)",
+    ax2.text(4900.0, gp_orc + 0.14, f"Oracle ({gp_orc:.2f} req/s)",
              fontsize=7.4, fontweight="bold", color=C_BLACK, ha="right", va="bottom")
 
-    # Reference bandwidth-matched 200 GB/s electrical fabric (4x400G switch + transceivers)
-    ax2.axvline(PWR_ELEC_1600G_E2E, color=C_HBM, ls=":", lw=1.05, zorder=1)
-    ax2.text(PWR_ELEC_1600G_E2E * 0.94, 2.28, "Matched 200 GB/s\nElectrical (3.16 kW)\n4.9$\\times$–7.8$\\times$ power",
-             fontsize=6.9, color=C_BLACK, ha="right", va="center",
-             bbox=dict(boxstyle="round,pad=0.16", fc="#FFFFFF", ec=C_HBM, lw=0.65))
+    # Matched 200 GB/s electrical reference vertical line
+    ax2.axvline(PWR_ELEC_1600G_E2E, color="#888888", ls=":", lw=1.05, zorder=1)
+    ax2.text(PWR_ELEC_1600G_E2E * 0.88, 2.38, "Matched 200 GB/s\nElectrical (3.16 kW)\n4.9$\\times$–7.8$\\times$ power",
+             fontsize=6.8, color=C_BLACK, ha="right", va="center", linespacing=1.15)
 
-    # Plot points: (x=E2E Power [Switch + NIC Transceivers], y=Peak 128K SLO Goodput)
-    ax2.scatter(PWR_OCS_200G_41_E2E, gp_opt41, s=145, marker="*", color=C_OPTIKV_41,
+    # Plot data points cleanly
+    ax2.scatter(PWR_OCS_200G_41_E2E, gp_opt41, s=165, marker="*", color=C_OPTIKV_41,
                 edgecolor=C_BLACK, linewidth=0.75, zorder=7)
     ax2.scatter(PWR_OCS_200G_11_E2E, gp_opt, s=90, marker="o", color=C_OPTIKV,
                 edgecolor=C_BLACK, linewidth=0.75, zorder=6)
-    ax2.scatter(PWR_ELEC_400G_E2E, gp_r50, s=62, marker="^", color="#2B6B56",
+    ax2.scatter(PWR_ELEC_400G_E2E, gp_r50, s=66, marker="^", color="#2B6B56",
                 edgecolor=C_BLACK, linewidth=0.65, zorder=6)
-    ax2.scatter(PWR_ELEC_1600G_E2E, gp_orc, s=46, marker="s", color=C_DRAM,
+    ax2.scatter(PWR_ELEC_1600G_E2E, gp_orc, s=48, marker="s", color=C_DRAM,
                 edgecolor=C_BLACK, linewidth=0.65, zorder=5)
     ax2.scatter(PWR_ELEC_400G_E2E, gp_rpf, s=55, marker=POLICY_MARKER["rdma_prefetch"],
                 color=C_RDMA_PF, edgecolor=C_BLACK, linewidth=0.65, zorder=5)
@@ -386,53 +435,53 @@ def make_fig1_teaser() -> None:
                 color=C_RDMA, edgecolor=C_BLACK, linewidth=0.65, zorder=5)
     ax2.scatter(PWR_ELEC_400G_E2E * 1.07, gp_rrt - 0.04, s=44, marker=POLICY_MARKER["concur_rdma"],
                 color=C_CONCUR, edgecolor=C_BLACK, linewidth=0.60, zorder=4)
-    ax2.scatter(PWR_OCS_200G_11_E2E, 0.03, s=48, marker=POLICY_MARKER["optical_naive"],
+    ax2.scatter(PWR_OCS_200G_11_E2E, 0.02, s=48, marker=POLICY_MARKER["optical_naive"],
                 color=C_NAIVE, edgecolor=C_BLACK, linewidth=0.65, zorder=5)
-    ax2.scatter(PWR_ELEC_400G_E2E * 1.04, 0.03, s=46, marker=POLICY_MARKER["local_hbm"],
+    ax2.scatter(PWR_ELEC_400G_E2E * 1.04, 0.02, s=46, marker=POLICY_MARKER["local_hbm"],
                 color=C_HBM, edgecolor=C_BLACK, linewidth=0.65, zorder=4)
 
     gpw_41 = (gp_opt41 / PWR_OCS_200G_41_E2E) / (gp_rrt / PWR_ELEC_400G_E2E)
     gpw_41_r50 = (gp_opt41 / PWR_OCS_200G_41_E2E) / (gp_r50 / PWR_ELEC_400G_E2E)
-    ax2.annotate(f"OptiKV 4:1 (404 W)\n{gp_opt41:.2f} ({gpw_41_r50:.2f}$\\times$ / {gpw_41:.1f}$\\times$)",
-                 xy=(PWR_OCS_200G_41_E2E, gp_opt41), xytext=(228.0, 2.55),
-                 fontsize=6.5, fontweight="bold", color=C_BLACK,
-                 bbox=dict(boxstyle="round,pad=0.15", fc="#FFFFFF", ec=C_OPTIKV_41, lw=0.80),
+
+    # ONLY ONE protagonist badge (OptiKV 4:1); ZERO line crossings, ZERO spine touches!
+    ax2.annotate(f"OptiKV 4:1 (404 W)\n{gp_opt41:.2f} ({gpw_41_r50:.2f}$\\times$ 50G / {gpw_41:.1f}$\\times$ 25G)",
+                 xy=(PWR_OCS_200G_41_E2E, gp_opt41 - 0.14), xytext=(312.0, 2.78),
+                 ha="center", va="center", fontsize=6.3, fontweight="bold", color=C_BLACK, linespacing=1.15,
+                 bbox=dict(boxstyle="round,pad=0.18", fc="#FFFFFF", ec=C_OPTIKV_41, lw=0.85),
                  arrowprops=dict(arrowstyle="-|>", color=C_OPTIKV_41, lw=0.95))
-    ax2.annotate(f"OptiKV 1:1\n(646 W, 50 ms)",
-                 xy=(PWR_OCS_200G_11_E2E, gp_opt), xytext=(450.0, 1.56),
-                 fontsize=6.6, fontweight="bold", color=C_BLACK,
-                 bbox=dict(boxstyle="round,pad=0.14", fc="#FFFFFF", ec=C_OPTIKV, lw=0.75),
-                 arrowprops=dict(arrowstyle="-|>", color=C_OPTIKV, lw=0.90, connectionstyle="arc3,rad=0.14"))
-    ax2.annotate(f"RDMA-50G (400G Line)\n{gp_r50:.2f} @ 790 W (162 ms, 3.25$\\times$)",
-                 xy=(PWR_ELEC_400G_E2E, gp_r50), xytext=(910.0, 3.30),
-                 fontsize=6.5, fontweight="bold", color=C_BLACK,
-                 bbox=dict(boxstyle="round,pad=0.14", fc="#FFFFFF", ec="#2B6B56", lw=0.70),
+    ax2.annotate("OptiKV 1:1 (646 W)\n50 ms P50",
+                 xy=(PWR_OCS_200G_11_E2E, gp_opt - 0.12), xytext=(605.0, 1.82),
+                 ha="center", va="center", fontsize=6.6, fontweight="bold", color=C_BLACK, linespacing=1.12,
+                 arrowprops=dict(arrowstyle="-|>", color=C_OPTIKV, lw=0.90, connectionstyle="arc3,rad=0.18"))
+    ax2.annotate("RDMA-50G (790 W)\n162 ms (3.25$\\times$ slower)",
+                 xy=(PWR_ELEC_400G_E2E * 1.05, gp_r50 - 0.05), xytext=(1010.0, 3.42),
+                 ha="left", va="center", fontsize=6.4, fontweight="bold", color=C_BLACK, linespacing=1.12,
                  arrowprops=dict(arrowstyle="-|>", color="#2B6B56", lw=0.90))
-    ax2.annotate(f"RDMA-25G+Pf\n({gp_rpf:.2f} @ 790 W)",
-                 xy=(PWR_ELEC_400G_E2E, gp_rpf), xytext=(1130.0, 1.48),
-                 fontsize=6.8, color=C_BLACK,
+    ax2.annotate(f"RDMA-25G+Pf ({gp_rpf:.2f})",
+                 xy=(PWR_ELEC_400G_E2E * 1.07, gp_rpf), xytext=(1080.0, 1.44),
+                 ha="left", va="center", fontsize=6.6, color=C_BLACK,
                  arrowprops=dict(arrowstyle="-|>", color=C_RDMA_PF, lw=0.85))
-    ax2.annotate(f"RDMA-25G+Rt/CONCUR\n({gp_rrt:.2f} @ 790 W)",
-                 xy=(PWR_ELEC_400G_E2E, gp_rrt), xytext=(1130.0, 0.68),
-                 fontsize=6.7, color=C_BLACK,
+    ax2.annotate(f"RDMA-25G+Rt /\nCONCUR ({gp_rrt:.2f})",
+                 xy=(PWR_ELEC_400G_E2E * 1.13, gp_rrt - 0.02), xytext=(1080.0, 0.78),
+                 ha="left", va="center", fontsize=6.5, color=C_BLACK, linespacing=1.08,
                  arrowprops=dict(arrowstyle="-|>", color=C_RDMA, lw=0.85))
     ax2.annotate("Opt-Naive (0.00)",
-                 xy=(PWR_OCS_200G_11_E2E, 0.05), xytext=(238.0, 0.45),
-                 fontsize=6.8, color=C_BLACK,
+                 xy=(PWR_OCS_200G_11_E2E * 0.94, 0.04), xytext=(175.0, 0.48),
+                 ha="left", va="center", fontsize=6.6, color=C_BLACK,
                  arrowprops=dict(arrowstyle="-|>", color=C_NAIVE, lw=0.85))
-    ax2.annotate("HBM/NoCache (0.00)",
-                 xy=(PWR_ELEC_400G_E2E * 1.04, 0.05), xytext=(1250.0, 0.14),
-                 fontsize=6.8, color=C_BLACK,
+    ax2.annotate("HBM / NoCache (0.00)",
+                 xy=(PWR_ELEC_400G_E2E * 1.10, 0.03), xytext=(1080.0, 0.14),
+                 ha="left", va="center", fontsize=6.6, color=C_BLACK,
                  arrowprops=dict(arrowstyle="-|>", color=C_HBM, lw=0.85))
 
     ax2.set_xscale("log")
-    ax2.set_xlim(220.0, 4200.0)
-    ax2.set_ylim(-0.25, 4.78)
-    ax2.set_xticks([250, 400, 800, 1600, 3200], ["250", "400", "800", "1.6K", "3.2K"])
+    ax2.set_xlim(145.0, 5400.0)
+    ax2.set_ylim(-0.32, 4.90)
+    ax2.set_xticks([250, 500, 1000, 2000, 4000], ["250", "500", "1K", "2K", "4K"])
     ax2.xaxis.set_minor_formatter(plt.NullFormatter())
     ax2.set_xlabel("End-to-end fabric power: switch + NIC optics (W)", fontsize=9.2)
     ax2.set_ylabel("Peak 128K SLO goodput (req/s)", fontsize=9.4)
-    ax2.set_title("(c) 128K Goodput vs. E2E Fabric Power", loc="center", fontsize=10.8)
+    ax2.set_title("(c) 128K Goodput vs. E2E Fabric Power", loc="center", fontsize=11.0, pad=7.5)
 
     save_fig(fig, "fig1_teaser")
 
