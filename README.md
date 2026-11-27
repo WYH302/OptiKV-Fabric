@@ -101,14 +101,15 @@ python scripts/make_publication_figures.py
 
 ```bibtex
 @article{wu2026optikv,
-  author  = {Yonghao Wu},
+  author  = {Yonghao Wu and Jiayang Wu and Wensheng Gan and Philip S. Yu},
   title   = {{OptiKV-Fabric}: Physics-Aware Lossless {KV} Cache Scheduling over Reconfigurable Optical Fabrics for Agentic {LLM} Serving},
   journal = {Manuscript submitted to IEEE Transactions},
   year    = {2026}
 }
 ```
 
-Contact: Yonghao Wu (`yonghaowu369@gmail.com`), School of Electronic Science and Engineering (School of Microelectronics), South China Normal University.
+**Authors:** Yonghao Wu\* (School of Computer Science, South China Normal University, `yonghaowu369@gmail.com`), Jiayang Wu\* (School of Engineering, Westlake University, `csjywu1@gmail.com`), Wensheng Gan† (Corresponding Author, College of Cyber Security, Jinan University, `wsgan001@gmail.com`), and Philip S. Yu (Department of Computer Science, University of Illinois Chicago, `psyu@uic.edu`).  
+**Funding:** Supported in part by the National Natural Science Foundation of China (Grant 62272196) and the Guangzhou Basic and Applied Basic Research Foundation (Grant 2024A04J9971).
 
 ---
 
