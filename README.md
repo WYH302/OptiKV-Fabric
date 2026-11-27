@@ -1,10 +1,11 @@
 # OptiKV-Fabric
 
-**Interconnect-Aware Lossless KV Cache Scheduling over Reconfigurable Optical Circuit Switches for Agentic LLM Serving**
+**Physics-Aware Lossless KV Cache Scheduling over Reconfigurable Optical Fabrics for Agentic LLM Serving**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg)](requirements.txt)
 [![Tests](https://img.shields.io/badge/Invariants-23%2F23%20Passed-2ea44f.svg)](tests/)
+[![Release](https://img.shields.io/badge/Release-v2.4%20IEEE%20Trans.-0072B2.svg)](https://github.com/WYH302/OptiKV-Fabric/releases)
 
 [English](#overview) | [简体中文](#简体中文简介)
 
@@ -12,15 +13,15 @@
 
 ## Overview
 
-**OptiKV-Fabric** is a trace-driven, GPU-calibrated simulation and scheduling framework studying lossless Key-Value (KV) cache management over Reconfigurable Optical Circuit Switches (OCS) for multi-turn, long-context Large Language Model (LLM) agents.
+**OptiKV-Fabric** is a trace-driven, GPU-calibrated simulation and lossless scheduling framework for Key-Value (KV) cache management over Reconfigurable Optical Circuit Switches (OCS) in multi-turn, long-context Large Language Model (LLM) agent serving.
 
-Multi-turn agentic workloads exhibit high causal prefix reuse (55.3%–98.4% across Mooncake, LMCache, and FreeInference) and growing prompt lengths (24K–170K+ tokens), causing active KV caches to overflow single-GPU HBM. While optical circuit switches provide high exclusive bandwidth (45–800 GB/s) at ~100× lower switch port power than electrical 400G packet switches, mechanical MEMS switching latencies (25–50 ms) and port exclusivity degrade interconnect-blind schedulers (*Optical-Naive*). Guided by three closed-form roofline crossover laws, OptiKV-Fabric centers on a single state primitive—the **OCS Port Calendar**—to resolve three coupled scheduling questions in closed loop:
+Multi-turn agentic workloads exhibit high causal prefix reuse (55.3%–98.4% across Mooncake, LMCache, and FreeInference) and growing prompt lengths (24K–170K+ tokens), causing active KV caches to overflow single-GPU HBM. While optical circuit switches deliver 45–800 GB/s exclusive bandwidth at ~100× lower switch port power than electrical 400G packet switches, mechanical MEMS switching latencies (25–50 ms) and port exclusivity degrade interconnect-blind schedulers (*Optical-Naive*). Guided by three closed-form roofline crossover laws, OptiKV-Fabric anchors **three tightly coupled modules** on one unified state primitive—the **OCS Port Calendar**—backed by formal duty-cycle and $(1 + O(K_{\text{lat}}/M))$-competitive optical channel bounds (**Theorem 1**) and per-request complexity bounds (**Proposition 1**):
 
-1. **Optical Transfer vs. Local DRAM vs. Exact Recomputation**: Standing-circuit pool-first coalescing exploits latched ports ($\tau_{\text{eff}} = 0$), queue-aware co-steering arbitrates optical links against local PCIe DRAM, and closed-form selective recompute abort cancels remote fetches whenever overlapped remote TTFT exceeds local delta prefill.
-2. **Strictly Causal Hiding of 25–50 ms MEMS Switching**: Chronological EWMA Just-In-Time (JIT) burst prefetching schedules asynchronous optical transfers inside natural inter-turn agent pauses (0.71–2.22 s median) using strictly past session history, attaching early arrivals via Strata-style in-flight join to sustain **75%–93%** MEMS duty cycles (and **76%–81%** under strict bipartite transceiver contention).
-3. **Prefix-Dependency-Aware Retention**: Probation-filtered causal reuse prediction (promoting anchors only on second observation) drives **Bounded Prefix-GDSF** eviction and five-tier lossless spill placement under request-unit block pinning.
+1. **OptiRoute (Calendar-Aware Circuit Co-Routing & Exact Abort)**: Rides latched standing circuits ($\tau_{\text{eff}} = 0$), coalesces remote prefixes pool-first onto the unified Optical KV Pool, co-steers bursts against local PCIe DRAM queue wait, and invokes closed-form lossless selective recompute abort whenever overlapped remote TTFT exceeds local delta prefill.
+2. **GapFetch (Strictly Causal Pause-Windowed Prefetching)**: Hides 25–50 ms MEMS reconfiguration off the critical path without future lookahead by predicting natural inter-turn agent pauses (0.71–2.22 s median) via a strictly causal EWMA estimator, firing congestion-guarded chronological JIT optical bursts, and attaching early arrivals via Strata-style in-flight join (**75%–93%** MEMS duty; **76.1%–80.8%** under strict bipartite contention).
+3. **PrefixKeep (Probation-Filtered Lossless Retention)**: Protects sequential prefix chains under finite HBM via second-observation anchor probation, **Bounded Prefix-GDSF** eviction, request-unit block pinning, and priority-preserving five-tier lossless spill.
 
-![OptiKV-Fabric Architecture and Speedup Frontier](figures/fig1_teaser.png)
+![OptiKV-Fabric Overview, Control Plane, and Performance-Power Pareto Frontier](figures/fig1_teaser.png)
 
 ---
 
@@ -140,8 +141,8 @@ If you find this codebase or dataset analysis helpful for your research, please 
 ```bibtex
 @article{wu2026optikv,
   author  = {Yonghao Wu},
-  title   = {{OptiKV-Fabric}: Interconnect-Aware Lossless {KV} Cache Scheduling over Reconfigurable Optical Circuit Switches for Agentic {LLM} Serving},
-  journal = {Manuscript under review},
+  title   = {{OptiKV-Fabric}: Physics-Aware Lossless {KV} Cache Scheduling over Reconfigurable Optical Fabrics for Agentic {LLM} Serving},
+  journal = {Manuscript submitted to IEEE Transactions},
   year    = {2026}
 }
 ```
@@ -152,13 +153,13 @@ Contact: Yonghao Wu (`yonghaowu369@gmail.com`), School of Electronic Science and
 
 ## 简体中文简介
 
-**OptiKV-Fabric** 是一个面向多轮、长上下文 Agentic LLM 推理场景的光互连感知无损 KV Cache 调度与硬件校准仿真框架。项目基于真实 NVIDIA RTX 3090 24 GB（`Qwen2.5-7B-Instruct` BF16，vLLM 0.34.0 与裸机 28 层 CUDA 卸载/重叠实测）微基准数据（1K–32K 冷 prefill 解析 Roofline 误差 **3.08% MAPE**、4K–30K 多长度热命中最高 **94.5×** 加速、24 GB HBM 显存墙 **40.7×** LRU 驱逐悬崖、28 层 PCIe Gen4 **25.9 GB/s** 与双流重叠 $\alpha_{\text{ovl}}{=}0.93$），并在 Mooncake、LMCache（24,880 请求）与 FreeInference（190,544 请求）公开真实轨迹上与涵盖 `SIEVE` (NSDI'24)、`RR-Evict` (2026)、`CONCUR+RDMA` (ICML'26) 与严格因果 `RDMA+Prefetch` 在内的 15 种策略同台对比，并通过严格源–宿二分端口冲突、Decode 连续批处理队列耦合及 WDM 多波长条带化压力验证。
+**OptiKV-Fabric** 是一个面向多轮、长上下文 Agentic LLM 推理场景的物理感知无损光互连 KV Cache 调度与硬件校准仿真框架。项目基于真实 NVIDIA RTX 3090 24 GB（`Qwen2.5-7B-Instruct` BF16，vLLM 0.34.0 与裸机 28 层 CUDA 卸载/重叠实测）微基准数据（1K–32K 冷 prefill 解析 Roofline 误差 **3.08% MAPE**、4K–30K 多长度热命中最高 **94.5×** 加速、24 GB HBM 显存墙 **40.7×** LRU 驱逐悬崖、28 层 PCIe Gen4 **25.9 GB/s** 与双流重叠 $\alpha_{\text{ovl}}{=}0.93$）及纯空载 vLLM 0.34.0 硬件在环回放（**38.04×** LRU 恢复、消除 CONCUR **10.83 s** 准入停顿、**8.06×** MEMS 占空比与 **100.0%** 逐 Token 无损一致），在 Mooncake、LMCache（24,880 请求）与 FreeInference（190,544 请求）公开轨迹上与涵盖 `SIEVE`、`RR-Evict`、`CONCUR+RDMA` 与严格因果 `RDMA+Prefetch` 在内的 15 种策略同台对比，并通过严格源–宿二分端口冲突、Decode 连续批处理队列耦合、WDM 多波长条带化及 4–32 卡多机扩展验证。
 
-### 核心设计
-围绕单一状态原语 **OCS Port Calendar（光交换端口日历）**，基于三条解析 Roofline 交叉定律协同求解三个耦合问题：
-- **何时用光 vs. 本地 DRAM vs. 精确重算**：驻留光路与共享光池优先聚合（$\tau_{\text{eff}} = 0$）、排队感知光–电 DRAM 协同分流与闭合形式无损选择性重算中止；
-- **严格因果隐藏 25–50 ms 机械 MEMS 切换延迟**：基于历史停顿 EWMA 的时间序事件堆 JIT 突发预取与 Strata 风格在途预取合流（零未来泄露），在 25 ms MEMS 下将光交换占空比提升至 **75%–93%**（严格二分端口约束下仍达 **76.1%–80.8%**）；
-- **前缀链式失效下的无损保留**：试用期过滤锚点与有界 **Prefix-GDSF** 驱逐驱动五层无损溢出（单卡 2 GiB HBM 命中率 **32.87%**，超越 LRU +6.54 pp、RR-Evict +5.44 pp、SIEVE +2.64 pp 与 S3-FIFO +2.63 pp，逼近离线最优 Belady 34.72% 的 **94.7%**）。
+### 核心架构（1 个核心状态原语 + 3 大协同模块 + Theorem 1 / Proposition 1）
+围绕单一状态原语 **OCS Port Calendar（光交换端口日历）** 与三条解析 Roofline 交叉定律：
+- **OptiRoute（日历感知光路协同路由与精确中止）**：驻留光路与共享光池优先聚合（$\tau_{\text{eff}} = 0$）、排队感知光–电 DRAM 协同分流与闭合形式无损选择性重算中止；
+- **GapFetch（严格因果停顿窗口预取）**：基于历史停顿 EWMA 的时间序事件堆 JIT 突发预取与 Strata 风格在途预取合流（零未来泄露），在 25 ms MEMS 下将光交换占空比提升至 **75%–93%**（严格二分端口约束下达 **76.1%–80.8%**）；
+- **PrefixKeep（试用期过滤无损保留）**：二次观测锚点试用期与有界 **Prefix-GDSF** 驱逐驱动五层无损溢出（单卡 2 GiB HBM 命中率 **32.87%**，超越 LRU +6.54 pp、RR-Evict +5.44 pp、SIEVE +2.64 pp 与 S3-FIFO +2.63 pp，达离线最优 Belady 34.72% 的 **94.7%**）。
 
 ### 快速复现
 ```bash
