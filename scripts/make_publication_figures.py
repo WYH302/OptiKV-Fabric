@@ -599,16 +599,16 @@ def make_fig2_workload_and_capacity() -> None:
     ax.plot(fi_q, qs, label=f"FreeInference (P50={np.median(fi_gaps):.2f} s)", color=C_CONCUR, lw=1.45, linestyle="--")
 
     ax.axvspan(0.025, 0.050, color=C_NAIVE, alpha=0.22, label="MEMS switch (25–50 ms)")
-    ax.axvline(0.00001, color=C_OPTIKV, linestyle=":", lw=1.2, label="SiPh switch (10 $\\mu$s)")
+    ax.plot([], [], color=C_OPTIKV, linestyle=":", lw=1.3, label="SiPh switch (10 $\\mu$s, $<10^{-2}$ s)")
     ax.set_xscale("log")
-    ax.set_xlim(1e-5, 1e3)
+    ax.set_xlim(1e-2, 1e3)
     ax.set_ylim(-0.02, 1.05)
     ax.set_xlabel("Inter-turn idle gap $\\Delta t_{\\mathrm{gap}}$ (s, log scale)")
     ax.set_ylabel("Empirical CDF")
     ax.set_title("(d) Inter-Turn Pause Windows vs. OCS Switch", loc="center")
     ax.legend(
-        loc="upper left", bbox_to_anchor=(0.015, 0.985),
-        fontsize=6.9, handlelength=1.35, labelspacing=0.25, borderpad=0.35,
+        loc="lower right", bbox_to_anchor=(0.985, 0.025),
+        fontsize=6.9, handlelength=1.4, labelspacing=0.26, borderpad=0.36,
     )
 
     fig.tight_layout(h_pad=1.0)
