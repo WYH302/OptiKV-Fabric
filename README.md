@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg)](requirements.txt)
 [![Tests](https://img.shields.io/badge/Invariants-23%2F23%20Passed-2ea44f.svg)](tests/)
-[![Release](https://img.shields.io/badge/Release-v3.1%20IEEE%20TPDS-0072B2.svg)](https://github.com/WYH302/OptiKV-Fabric/releases)
+[![Release](https://img.shields.io/badge/Release-v3.3%20IEEE%20TPDS-0072B2.svg)](https://github.com/WYH302/OptiKV-Fabric/releases)
 
 [English](#overview) | [简体中文](#简体中文简介)
 
@@ -21,11 +21,13 @@ Multi-turn agentic workloads exhibit high strictly causal prefix reuse (55.3%–
 2. **GapFetch (Strictly Causal Pause-Windowed Prefetching)**: Hides 25–50 ms MEMS switching off the critical path without future lookahead via a causal EWMA estimator over natural 0.71–2.22 s inter-turn agent pauses, congestion-guarded chronological bursts, and Strata-style in-flight join.
 3. **PrefixKeep (Probation-Filtered Lossless Retention)**: Protects sequential prefix chains inside finite HBM via second-observation anchor probation, **Bounded Prefix-GDSF** eviction, strict request-unit pinning, and five-tier lossless spill.
 
-![OptiKV-Fabric Overview, Control Plane, and Honest End-to-End Performance-Power Pareto Frontier](figures/fig1_teaser.png)
+![OptiKV-Fabric Teaser: Optical Thrashing vs. Pause Hiding and Honest 128K Performance-Power Pareto Frontier](figures/fig1_teaser.png)
+
+![OptiKV-Fabric Overall Control Plane and Five-Tier Memory Architecture](figures/fig_arch_overview.png)
 
 ---
 
-## Key Verified Results (`v3.1` IEEE TPDS Submission)
+## Key Verified Results (`v3.3` IEEE TPDS Submission)
 
 All metrics below are directly reproducible from the included RTX 3090 calibration logs (`results/3090/`) and strict bipartite-matching simulation CSVs (`results/sim/`):
 
@@ -71,15 +73,15 @@ pytest tests/ -v
 
 Expected output: **23 passed** in <1 second (verifies GQA/MLA/Hybrid KV formulas, RTX 3090 calibration MAPE <10%, zero pinned evictions, strict Oracle & Belady dominance, standing-circuit $\tau = 0$, recompute abort safety, strict causal chronological JIT prefetching, Strata in-flight join, strict bipartite port-matching conservation $|\mathcal{L}_{\text{pool}}(t)| \le \min(W, P)$ including 32-GPU/8-port round-robin port stealing, WDM striping, continuous-batching decode coupling, and Theorem 1's non-oversubscribed and oversubscribed bounds).
 
-### 3. Regenerate All 10 Publication Figures
+### 3. Regenerate All 11 Publication Figures
 
 ```bash
 python scripts/make_publication_figures.py
 ```
 
-Figures are written to `figures/fig1_teaser.{pdf,png}` through `figures/fig10_live_3090_hil_replay.{pdf,png}`.
+Figures are written to `figures/fig1_teaser.{pdf,png}`, `figures/fig_arch_overview.{pdf,png}`, and `figures/fig2_...` through `figures/fig10_live_3090_hil_replay.{pdf,png}` (11 standalone vector PDFs + 300-DPI PNGs).
 
-### 4. Re-Run Full `v3.1` Strict-Matching Simulations
+### 4. Re-Run Full `v3.3` Strict-Matching Simulations
 
 Place the public trace datasets under `datasets/`:
 - **Mooncake Traces**: [kvcache-ai/Mooncake](https://github.com/kvcache-ai/Mooncake) (`datasets/mooncake-traces/`)
@@ -115,4 +117,4 @@ python scripts/make_publication_figures.py
 
 ## 简体中文简介
 
-**OptiKV-Fabric** 是一个面向多轮、长上下文 Agentic LLM 推理的物理感知无损光互连 KV Cache 调度与硬件校准仿真框架（`v3.1`，目标投稿 **IEEE TPDS**）。项目在底层严格贯彻**二分图光端口匹配守恒**（任意时刻同时锁存光池的 Worker 数量严格满足 $|\mathcal{L}_{\text{pool}}(t)| \le \min(W, P)$，抢占端口必断开旧连接并支付重构时延 $\tau$），系统区分非超配（$P \ge W$）与超配（$P < W$）两种物理体制并给出完整理论证明（Theorem 1 与 Proposition 1）。基于 NVIDIA RTX 3090 24 GB 实机微基准校准（3.08% 冷 prefill MAPE、40.7× HBM 容量悬崖、25.9 GB/s 28 层双流重叠 $\alpha_{\text{ovl}}{=}0.93$）与统一 45 GB/s 单口径、纯增量预填充 Eq. (4) 重叠阴影（25.5 ms）的 vLLM 0.34.0 硬件在环回放（38.04× LRU 恢复、消除 CONCUR 10.83 s 准入停顿与 Optical-Naive +21.2% 穿透、3.09× MEMS 占空比与 100.0% 逐 Token 无损一致），在全量 767 会话 LMCache（24,880 请求）与 250 会话分层抽样 FreeInference（21,230 请求）上同时对标 25 GB/s 竞争态与 50 GB/s 满速 400G 线速 RDMA：即便面对满速 50 GB/s 400G RDMA，OptiKV 仍将中位 TTFT 分别降低 **27.8%** 与 **54.3%**（FreeInference 原始 SLO Goodput 提升 +6.5%–8.8%，128K 中位 TTFT 快 **3.25×–3.43×**），计入全部光模块端到端功耗后实现 **1.23×–1.96×**（对标 50 GB/s）与 **5.2×–8.4×**（对标 25 GB/s）端到端 Goodput/Watt，并在 4–32 卡扩展中验证 **4:1 端口超配拐点**。
+**OptiKV-Fabric** 是一个面向多轮、长上下文 Agentic LLM 推理的物理感知无损光互连 KV Cache 调度与硬件校准仿真框架（`v3.3`，目标投稿 **IEEE TPDS**）。项目在底层严格贯彻**二分图光端口匹配守恒**（任意时刻同时锁存光池的 Worker 数量严格满足 $|\mathcal{L}_{\text{pool}}(t)| \le \min(W, P)$，抢占端口必断开旧连接并支付重构时延 $\tau$），系统区分非超配（$P \ge W$）与超配（$P < W$）两种物理体制并给出完整理论证明（Theorem 1 与 Proposition 1）。基于 NVIDIA RTX 3090 24 GB 实机微基准校准（3.08% 冷 prefill MAPE、40.7× HBM 容量悬崖、25.9 GB/s 28 层双流重叠 $\alpha_{\text{ovl}}{=}0.93$）与统一 45 GB/s 单口径、纯增量预填充 Eq. (4) 重叠阴影（25.5 ms）的 vLLM 0.34.0 硬件在环回放（38.04× LRU 恢复、消除 CONCUR 10.83 s 准入停顿与 Optical-Naive +21.2% 穿透、3.09× MEMS 占空比与 100.0% 逐 Token 无损一致），在全量 767 会话 LMCache（24,880 请求）与 250 会话分层抽样 FreeInference（21,230 请求）上同时对标 25 GB/s 竞争态与 50 GB/s 满速 400G 线速 RDMA：即便面对满速 50 GB/s 400G RDMA，OptiKV 仍将中位 TTFT 分别降低 **27.8%** 与 **54.3%**（FreeInference 原始 SLO Goodput 提升 +6.5%–8.8%，128K 中位 TTFT 快 **3.25×–3.43×**），计入全部光模块端到端功耗后实现 **1.23×–1.96×**（对标 50 GB/s）与 **5.2×–8.4×**（对标 25 GB/s）端到端 Goodput/Watt，并在 4–32 卡扩展中验证 **4:1 端口超配拐点**。
