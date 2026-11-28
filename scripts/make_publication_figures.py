@@ -667,7 +667,7 @@ def make_fig3_calibration() -> None:
     ax.plot(s512["prefix_tokens"] / 1024.0, s512["roofline_hot_ms"], color=C_OPTIKV, ls=":", lw=1.1, label="Roofline $\\Delta$ (+512)")
     ax.plot(s128["prefix_tokens"] / 1024.0, s128["hot_ttft_ms"], color=C_RDMA_PF, marker="^", ms=4.0, lw=1.45, label="Hot APC (+128)")
     ax.set_yscale("log")
-    ax.set_ylim(18, 28000)
+    ax.set_ylim(18, 2.2e5)
     ax.set_xticks([4, 8, 12, 16, 24, 30], ["4K", "8K", "12K", "16K", "24K", "30K"])
     ax.set_xlabel("Cached prefix length (tokens)")
     ax.set_ylabel("Measured TTFT (ms, log)")
@@ -676,19 +676,22 @@ def make_fig3_calibration() -> None:
     p30 = s512[s512["prefix_tokens"] == 30720].iloc[0]
     ax.annotate(
         f"{p24['speedup']:.1f}$\\times$ (24K+128)",
-        xy=(24.0, p24["hot_ttft_ms"]), xytext=(10.0, 24.5),
+        xy=(24.0, p24["hot_ttft_ms"]), xytext=(9.5, 22.5),
         arrowprops=dict(arrowstyle="-|>", color=C_BLACK, lw=0.90),
         fontsize=7.3, fontweight="bold", color=C_BLACK,
         bbox=dict(boxstyle="round,pad=0.16", fc="#FFFFFF", ec=C_BLACK, lw=0.65),
     )
     ax.annotate(
         f"{p30['speedup']:.1f}$\\times$ (30K+512)",
-        xy=(30.0, p30["hot_ttft_ms"]), xytext=(16.5, 680.0),
+        xy=(30.0, p30["hot_ttft_ms"]), xytext=(15.5, 760.0),
         arrowprops=dict(arrowstyle="-|>", color=C_BLACK, lw=0.90),
         fontsize=7.3, fontweight="bold", color=C_BLACK,
         bbox=dict(boxstyle="round,pad=0.16", fc="#FFFFFF", ec=C_BLACK, lw=0.65),
     )
-    ax.legend(loc="upper left", fontsize=7.0)
+    ax.legend(
+        loc="upper left", ncol=2, fontsize=6.6,
+        columnspacing=0.75, handlelength=1.45, labelspacing=0.22, borderpad=0.30,
+    )
 
     # --- Panel (d) ---
     ax = axes[1, 0]
@@ -772,11 +775,14 @@ def make_fig3_calibration() -> None:
         fontsize=7.1, fontweight="bold", color=C_BLACK,
     )
     ax.set_xlim(-0.04, 1.04)
-    ax.set_ylim(18, 290)
+    ax.set_ylim(18, 305)
     ax.set_xlabel("Overlap factor $\\alpha_{\\mathrm{ovl}}$")
     ax.set_ylabel("128K P50 TTFT (ms)")
     ax.set_title("(f) Overlap Robustness $\\alpha_{\\mathrm{ovl}} \\in [0, 1]$", loc="center", fontsize=10.3)
-    ax.legend(loc="upper right", fontsize=6.7, ncol=1, labelspacing=0.22, borderpad=0.32)
+    ax.legend(
+        loc="upper center", ncol=2, fontsize=6.5,
+        columnspacing=0.80, handlelength=1.45, labelspacing=0.22, borderpad=0.30,
+    )
 
     fig.tight_layout()
     save_fig(fig, "fig3_prefill_model")
