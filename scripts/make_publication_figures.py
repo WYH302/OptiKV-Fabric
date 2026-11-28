@@ -407,7 +407,7 @@ def make_fig1_teaser() -> None:
     gp_rrt = float(peak.loc["rdma_routing"])
 
     # Soft Pareto-optimal region (upper-left)
-    ax2.fill_between([145.0, 720.0], [3.20, 3.20], [4.90, 4.90], color=P_BLUE, alpha=0.50, zorder=0)
+    ax2.fill_between([145.0, 720.0], [3.10, 3.10], [4.90, 4.90], color=P_BLUE, alpha=0.48, zorder=0)
     ax2.text(165.0, 4.74, "Pareto-Optimal", fontsize=7.6, fontweight="bold", color=C_BLACK, ha="left", va="top")
 
     # Oracle bound horizontal line
@@ -417,7 +417,7 @@ def make_fig1_teaser() -> None:
 
     # Matched 200 GB/s electrical reference vertical line
     ax2.axvline(PWR_ELEC_1600G_E2E, color="#888888", ls=":", lw=1.05, zorder=1)
-    ax2.text(PWR_ELEC_1600G_E2E * 0.88, 2.38, "Matched 200 GB/s\nElectrical (3.16 kW)\n4.9$\\times$–7.8$\\times$ power",
+    ax2.text(PWR_ELEC_1600G_E2E * 0.89, 2.02, "Matched 200 GB/s\nElectrical (3.16 kW)\n4.9$\\times$–7.8$\\times$ power",
              fontsize=6.8, color=C_BLACK, ha="right", va="center", linespacing=1.15)
 
     # Plot data points cleanly
@@ -443,36 +443,24 @@ def make_fig1_teaser() -> None:
     gpw_41 = (gp_opt41 / PWR_OCS_200G_41_E2E) / (gp_rrt / PWR_ELEC_400G_E2E)
     gpw_41_r50 = (gp_opt41 / PWR_OCS_200G_41_E2E) / (gp_r50 / PWR_ELEC_400G_E2E)
 
-    # ONLY ONE protagonist badge (OptiKV 4:1); ZERO line crossings, ZERO spine touches!
-    ax2.annotate(f"OptiKV 4:1 (404 W)\n{gp_opt41:.2f} ({gpw_41_r50:.2f}$\\times$ 50G / {gpw_41:.1f}$\\times$ 25G)",
-                 xy=(PWR_OCS_200G_41_E2E, gp_opt41 - 0.14), xytext=(312.0, 2.78),
-                 ha="center", va="center", fontsize=6.3, fontweight="bold", color=C_BLACK, linespacing=1.15,
-                 bbox=dict(boxstyle="round,pad=0.18", fc="#FFFFFF", ec=C_OPTIKV_41, lw=0.85),
-                 arrowprops=dict(arrowstyle="-|>", color=C_OPTIKV_41, lw=0.95))
+    # Clean direct placement (NO redundant arrows!); ONLY ONE thin straight leader line
+    # for the sandwiched middle dot OptiKV 1:1 (646 W) between 404 W and 790 W!
+    ax2.text(320.0, 3.68, f"OptiKV 4:1 (404 W)\n{gp_opt41:.2f} ({gpw_41_r50:.2f}$\\times$ 50G / {gpw_41:.1f}$\\times$ 25G)",
+             ha="center", va="top", fontsize=6.4, fontweight="bold", color=C_BLACK, linespacing=1.18)
     ax2.annotate("OptiKV 1:1 (646 W)\n50 ms P50",
-                 xy=(PWR_OCS_200G_11_E2E, gp_opt - 0.12), xytext=(605.0, 1.82),
-                 ha="center", va="center", fontsize=6.6, fontweight="bold", color=C_BLACK, linespacing=1.12,
-                 arrowprops=dict(arrowstyle="-|>", color=C_OPTIKV, lw=0.90, connectionstyle="arc3,rad=0.18"))
-    ax2.annotate("RDMA-50G (790 W)\n162 ms (3.25$\\times$ slower)",
-                 xy=(PWR_ELEC_400G_E2E * 1.05, gp_r50 - 0.05), xytext=(1010.0, 3.42),
-                 ha="left", va="center", fontsize=6.4, fontweight="bold", color=C_BLACK, linespacing=1.12,
-                 arrowprops=dict(arrowstyle="-|>", color="#2B6B56", lw=0.90))
-    ax2.annotate(f"RDMA-25G+Pf ({gp_rpf:.2f})",
-                 xy=(PWR_ELEC_400G_E2E * 1.07, gp_rpf), xytext=(1080.0, 1.44),
-                 ha="left", va="center", fontsize=6.6, color=C_BLACK,
-                 arrowprops=dict(arrowstyle="-|>", color=C_RDMA_PF, lw=0.85))
-    ax2.annotate(f"RDMA-25G+Rt /\nCONCUR ({gp_rrt:.2f})",
-                 xy=(PWR_ELEC_400G_E2E * 1.13, gp_rrt - 0.02), xytext=(1080.0, 0.78),
-                 ha="left", va="center", fontsize=6.5, color=C_BLACK, linespacing=1.08,
-                 arrowprops=dict(arrowstyle="-|>", color=C_RDMA, lw=0.85))
-    ax2.annotate("Opt-Naive (0.00)",
-                 xy=(PWR_OCS_200G_11_E2E * 0.94, 0.04), xytext=(175.0, 0.48),
-                 ha="left", va="center", fontsize=6.6, color=C_BLACK,
-                 arrowprops=dict(arrowstyle="-|>", color=C_NAIVE, lw=0.85))
-    ax2.annotate("HBM / NoCache (0.00)",
-                 xy=(PWR_ELEC_400G_E2E * 1.10, 0.03), xytext=(1080.0, 0.14),
-                 ha="left", va="center", fontsize=6.6, color=C_BLACK,
-                 arrowprops=dict(arrowstyle="-|>", color=C_HBM, lw=0.85))
+                 xy=(PWR_OCS_200G_11_E2E, gp_opt - 0.14), xytext=(PWR_OCS_200G_11_E2E, 2.86),
+                 ha="center", va="top", fontsize=6.6, fontweight="bold", color=C_BLACK, linespacing=1.15,
+                 arrowprops=dict(arrowstyle="-", color=C_OPTIKV, lw=0.85))
+    ax2.text(890.0, 3.84, "RDMA-50G (790 W)\n162 ms (3.25$\\times$ slower)",
+             ha="left", va="top", fontsize=6.5, fontweight="bold", color=C_BLACK, linespacing=1.15)
+    ax2.text(920.0, 1.24, f"RDMA-25G+Pf ({gp_rpf:.2f})",
+             ha="left", va="center", fontsize=6.6, color=C_BLACK)
+    ax2.text(960.0, 0.80, f"RDMA-25G+Rt /\nCONCUR ({gp_rrt:.2f})",
+             ha="left", va="center", fontsize=6.5, color=C_BLACK, linespacing=1.08)
+    ax2.text(555.0, 0.02, "Opt-Naive (0.00)",
+             ha="right", va="center", fontsize=6.6, color=C_BLACK)
+    ax2.text(940.0, 0.02, "HBM / NoCache (0.00)",
+             ha="left", va="center", fontsize=6.6, color=C_BLACK)
 
     ax2.set_xscale("log")
     ax2.set_xlim(145.0, 5400.0)
