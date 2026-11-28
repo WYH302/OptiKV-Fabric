@@ -1548,8 +1548,13 @@ def make_fig10_live_3090_hil_replay() -> None:
 
 
 def main() -> int:
-    print("Generating all 10 v3.0 IEEE Transactions figures (strict matching + honest E2E power)...", flush=True)
-    make_fig1_teaser()
+    print("Generating all 10 v3.2 IEEE TPDS figures (Vector Chrome Fig. 1 + Matplotlib Figs. 2-10)...", flush=True)
+    try:
+        import make_fig1_vector_chrome
+        make_fig1_vector_chrome.main()
+    except Exception as exc:
+        print(f"  [fallback] Vector Chrome Fig. 1 failed ({exc}); using Matplotlib Fig. 1", flush=True)
+        make_fig1_teaser()
     make_fig2_workload_and_capacity()
     make_fig3_calibration()
     make_fig4_main_comparison()
