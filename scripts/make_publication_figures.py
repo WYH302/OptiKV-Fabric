@@ -482,7 +482,7 @@ def make_fig2_workload_and_capacity() -> None:
     df_cap = pd.read_csv(SIM / "fig1_kv_capacity.csv")
     df_ts = pd.read_csv(TSTATS / "summary.csv")
 
-    fig, axes = plt.subplots(2, 2, figsize=(10.8, 5.05))
+    fig, axes = plt.subplots(2, 2, figsize=(10.8, 5.75))
 
     # --- Panel (a) ---
     ax = axes[0, 0]
@@ -512,8 +512,12 @@ def make_fig2_workload_and_capacity() -> None:
     ax.set_yscale("log")
     ax.set_xlabel("Context length (K tokens, log scale)")
     ax.set_ylabel("Batch=1 KV cache size (GiB, log)")
-    ax.set_title("(a) Multi-Architecture KV Memory Wall", loc="center")
-    ax.legend(loc="lower right", fontsize=7.0, ncol=1)
+    ax.set_title("(a) Multi-Architecture KV Memory Wall", loc="center", pad=54)
+    ax.legend(
+        loc="lower center", bbox_to_anchor=(0.5, 1.03), ncol=2,
+        fontsize=6.7, handlelength=1.6, columnspacing=0.85,
+        labelspacing=0.22, borderpad=0.35, frameon=True,
+    )
 
     # --- Panel (b): Deduplicated Unique Trace Splits (No ToolAgent Duplicate!) ---
     ax = axes[0, 1]
@@ -537,8 +541,12 @@ def make_fig2_workload_and_capacity() -> None:
     ax.set_xlim(1.2e2, 2.5e6)
     ax.set_xlabel("Prompt length (tokens, log scale)")
     ax.set_ylabel("Empirical CDF")
-    ax.set_title("(b) Production & Agentic Prompt Lengths", loc="center")
-    ax.legend(loc="upper left", fontsize=7.2, handlelength=1.6)
+    ax.set_title("(b) Production & Agentic Prompt Lengths", loc="center", pad=54)
+    ax.legend(
+        loc="center", bbox_to_anchor=(0.5, 1.18), ncol=2,
+        fontsize=7.0, handlelength=1.6, columnspacing=1.0,
+        labelspacing=0.26, borderpad=0.38, frameon=True,
+    )
 
     # --- Panel (c): Deduplicated Causal Prefix Block Reuse ---
     ax = axes[1, 0]
@@ -598,9 +606,12 @@ def make_fig2_workload_and_capacity() -> None:
     ax.set_xlabel("Inter-turn idle gap $\\Delta t_{\\mathrm{gap}}$ (s, log scale)")
     ax.set_ylabel("Empirical CDF")
     ax.set_title("(d) Inter-Turn Pause Windows vs. OCS Switch", loc="center")
-    ax.legend(loc="lower right", fontsize=7.6)
+    ax.legend(
+        loc="upper left", bbox_to_anchor=(0.015, 0.985),
+        fontsize=6.9, handlelength=1.35, labelspacing=0.25, borderpad=0.35,
+    )
 
-    fig.tight_layout()
+    fig.tight_layout(h_pad=1.0)
     save_fig(fig, "fig2_trace_characterization")
 
 
@@ -761,11 +772,11 @@ def make_fig3_calibration() -> None:
         fontsize=7.1, fontweight="bold", color=C_BLACK,
     )
     ax.set_xlim(-0.04, 1.04)
-    ax.set_ylim(18, 220)
+    ax.set_ylim(18, 290)
     ax.set_xlabel("Overlap factor $\\alpha_{\\mathrm{ovl}}$")
     ax.set_ylabel("128K P50 TTFT (ms)")
     ax.set_title("(f) Overlap Robustness $\\alpha_{\\mathrm{ovl}} \\in [0, 1]$", loc="center", fontsize=10.3)
-    ax.legend(loc="upper right", fontsize=6.9, ncol=1)
+    ax.legend(loc="upper right", fontsize=6.7, ncol=1, labelspacing=0.22, borderpad=0.32)
 
     fig.tight_layout()
     save_fig(fig, "fig3_prefill_model")
